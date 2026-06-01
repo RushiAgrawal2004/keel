@@ -101,6 +101,24 @@ keel_contract:
     assert (tmp_path / "keel-out" / "adr-contracts.yml").exists()
 
 
+def test_cli_plug_and_play_commands(tmp_path: Path) -> None:
+    runner = CliRunner()
+
+    init = runner.invoke(app, ["init", str(tmp_path), "--preset", "node"])
+    doctor = runner.invoke(app, ["doctor", str(tmp_path), "--json"])
+    mcp = runner.invoke(app, ["mcp-config", str(tmp_path), "--client", "codex"])
+    quickstart = runner.invoke(app, ["quickstart", str(tmp_path), "--skip-graph", "--json"])
+
+    assert init.exit_code == 0
+    assert "src/components" in (tmp_path / ".keel.yml").read_text(encoding="utf-8")
+    assert doctor.exit_code == 0
+    assert '"keel_config"' in doctor.stdout
+    assert mcp.exit_code == 0
+    assert '"keel"' in mcp.stdout
+    assert quickstart.exit_code == 0
+    assert '"keel build ."' in quickstart.stdout
+
+
 def _copy_project(tmp_path: Path, fixtures: Path, graph_name: str) -> None:
     (tmp_path / ".keel.yml").write_text((fixtures / "sample.keel.yml").read_text(encoding="utf-8"), encoding="utf-8")
     graph_dir = tmp_path / "graphify-out"

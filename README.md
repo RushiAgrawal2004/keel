@@ -7,6 +7,7 @@ Architecture regression tests for AI-generated code, powered by Graphify.
 ## Quickstart
 
 ```bash
+pip install keel-arch
 keel init .
 keel discover . --write
 keel proposals .
@@ -74,6 +75,17 @@ keel serve
 - `get_replay`
 
 Set `KEEL_REPO_PATH` or pass `--repo` to point the server at a target repo.
+
+## Plug-And-Play Setup
+
+The PyPI distribution is `keel-arch` because the exact `keel` package name is already taken on PyPI. The installed command is still `keel`.
+
+```bash
+pip install keel-arch
+keel quickstart /path/to/repo --preset generic
+keel doctor /path/to/repo
+keel mcp-config /path/to/repo --client codex
+```
 
 ## Dashboard And Reports
 

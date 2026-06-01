@@ -120,3 +120,39 @@
 - `keel serve --help` displayed the command help without starting the server.
 - `python -m build` and `python -m twine check dist/*` passed.
 - Refreshed Graphify after the guide-specific build: `418 nodes`, `1258 edges`, `29 communities`.
+
+## 2026-06-01 - Plug-and-Play Install/MCP Flow
+
+### Request
+- Make Keel feel plug-and-play:
+  - Install with pip.
+  - Connect it to a codebase.
+  - Use CLI or MCP for the same functionality.
+  - Minimize hand wiring.
+
+### Findings
+- The exact PyPI package name `keel` is already occupied by an unrelated old package, so the command can be `keel`, but the distribution name likely needs to be something like `keel-arch` unless the PyPI name is transferred.
+- The repo already has core CLI and MCP server support, but it lacks one-command onboarding and generated MCP config snippets.
+
+### Planned Approach
+- Add `keel doctor` for environment/repo readiness.
+- Add `keel quickstart` for init/build/brief/dashboard guidance.
+- Add preset-based `keel init --preset`.
+- Add `keel mcp-config` to generate Codex/Claude/Cursor-style MCP snippets.
+
+### Changes
+- Added `keel/onboard.py` with presets, doctor checks, quickstart orchestration, and MCP config generation.
+- Added CLI commands: `keel doctor`, `keel quickstart`, and `keel mcp-config`.
+- Extended `keel init` with `--preset generic|python|node`.
+- Updated `keel serve` so `--repo` works through the Typer command.
+- Changed the publishable distribution name to `keel-arch` while keeping the import package and command name as `keel`, because PyPI already has an unrelated `keel` package.
+
+### Verification
+- `python -m pytest` passed with 23 tests.
+- `keel doctor demo-app --json` reported the demo repo ready.
+- `keel mcp-config demo-app --client codex` generated a Codex MCP server snippet.
+- `keel quickstart demo-app --skip-graph --json` returned config, doctor, MCP, and next-step data.
+- `keel serve --help` showed `--repo`.
+- `python -m build` created `keel_arch-0.1.0` sdist and wheel.
+- `python -m twine check dist/*` passed.
+- Refreshed Graphify after plug-and-play onboarding changes: `434 nodes`, `1323 edges`, `31 communities`.

@@ -1,5 +1,5 @@
 [project]
-name = "keel"
+name = "keel-arch"
 version = "0.1.0"
 description = "Architecture regression tests for AI-generated code, powered by Graphify."
 readme = "README.md"

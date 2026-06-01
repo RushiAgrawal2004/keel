@@ -40,10 +40,10 @@ def get_replay(session_id: int, repo_path: Path | None = None) -> str:
     return render_replay(get_session(_repo(repo_path), session_id))
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="Keel MCP stdio server")
     parser.add_argument("--repo", default=os.environ.get("KEEL_REPO_PATH", "."))
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     try:
         from mcp.server.fastmcp import FastMCP
     except ImportError as exc:
@@ -78,4 +78,3 @@ def _repo(repo_path: Path | None) -> Path:
 
 if __name__ == "__main__":
     main()
-

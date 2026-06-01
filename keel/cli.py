@@ -19,6 +19,9 @@ from .graph_quality import graph_quality
 from .graphify_runner import ensure_graph
 from .layers import assign_layers_and_zones
 from .memory import export_events_jsonl, list_events, record_event
+from .onboard import doctor as run_doctor
+from .onboard import mcp_config, pretty_json, quickstart as run_quickstart
+from .onboard import write_preset_config
 from .pr_comment import write_pr_comment
 from .record import get_session
 from .report import render_check_html, render_check_result, render_discover, render_explain, render_replay
@@ -56,13 +59,60 @@ def build(path: Annotated[Path, typer.Argument()] = Path(".")) -> None:
 def init(
     path: Annotated[Path, typer.Argument()] = Path("."),
     force: Annotated[bool, typer.Option("--force", help="Overwrite an existing .keel.yml.")] = False,
+    preset: Annotated[str, typer.Option("--preset", help="Layer/rule preset: generic, python, or node.")] = "generic",
 ) -> None:
     target = path.resolve()
     config_path = target / ".keel.yml"
     if config_path.exists() and not force:
         raise typer.BadParameter(".keel.yml already exists. Use --force to overwrite.")
-    save_config(target, default_config(target.name))
+    write_preset_config(target, preset, force=True)
     typer.echo(f"Wrote {config_path}")
+
+
+@app.command()
+def doctor(
+    path: Annotated[Path, typer.Argument()] = Path("."),
+    json_output: Annotated[bool, typer.Option("--json", help="Print machine-readable JSON.")] = False,
+) -> None:
+    result = run_doctor(path.resolve())
+    if json_output:
+        typer.echo(pretty_json(result))
+        return
+    typer.echo("Keel doctor")
+    for check in result["checks"]:
+        mark = "OK" if check["ok"] else "MISSING"
+        typer.echo(f"- {mark}: {check['name']} ({check['detail']})")
+    raise typer.Exit(0 if result["ok"] else 1)
+
+
+@app.command()
+def quickstart(
+    path: Annotated[Path, typer.Argument()] = Path("."),
+    preset: Annotated[str, typer.Option("--preset", help="Layer/rule preset: generic, python, or node.")] = "generic",
+    force: Annotated[bool, typer.Option("--force", help="Overwrite an existing .keel.yml.")] = False,
+    skip_graph: Annotated[bool, typer.Option("--skip-graph", help="Do not run Graphify during setup.")] = False,
+    json_output: Annotated[bool, typer.Option("--json", help="Print machine-readable JSON.")] = False,
+) -> None:
+    result = run_quickstart(path.resolve(), preset=preset, force=force, skip_graph=skip_graph)
+    if json_output:
+        typer.echo(pretty_json(result))
+        return
+    typer.echo(f"Keel config: {result['config_path']}")
+    if result["graph_path"]:
+        typer.echo(f"Graphify graph: {result['graph_path']}")
+    if result["graph_error"]:
+        typer.echo(f"Graphify not ready: {result['graph_error']}")
+    typer.echo("Next commands:")
+    for item in result["next"]:
+        typer.echo(f"  {item}")
+
+
+@app.command("mcp-config")
+def mcp_config_command(
+    path: Annotated[Path, typer.Argument()] = Path("."),
+    client: Annotated[str, typer.Option("--client", help="codex, claude, or cursor.")] = "codex",
+) -> None:
+    typer.echo(pretty_json(mcp_config(path.resolve(), client)))
 
 
 @app.command()
@@ -164,8 +214,8 @@ def replay(session_id: Annotated[int, typer.Argument()], path: Annotated[Path, t
 
 
 @app.command()
-def serve() -> None:
-    serve_main()
+def serve(path: Annotated[Path, typer.Option("--repo", help="Repository path to serve over MCP.")] = Path(".")) -> None:
+    serve_main(["--repo", str(path.resolve())])
 
 
 @app.command()
