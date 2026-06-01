@@ -50,3 +50,30 @@
 - `python -m build` created source and wheel distributions.
 - `python -m twine check dist/*` passed for both generated distributions.
 - Refreshed Graphify after the product-completion changes: `351 nodes`, `1033 edges`, `23 communities`.
+
+## 2026-06-01 - External Build Guide Audit
+
+### Request
+- Compare the current Keel repo against `d:\microsoft apps\Keel-BUILD-GUIDE.md`.
+
+### Findings
+- The current repo implements a richer product track than the external guide in several areas: discovery, approvals, baseline support, dashboard, graph-quality checks, PR comments, ADR compilation, webhook export, PyPI workflow, docs workflow, and event memory.
+- The current repo does not exactly satisfy the external guide's milestone layout.
+- Missing guide-specific modules:
+  - `keel/rules.py`
+  - `keel/brief.py`
+  - `keel/record.py`
+  - `keel/serve.py`
+- Missing guide-specific CLI commands:
+  - `keel build`
+  - `keel brief`
+  - `keel replay`
+- Missing guide-specific MCP dependency and server:
+  - `mcp` is not in `pyproject.toml`.
+  - No stdio MCP server exposes `get_brief`, `check_change`, `record_action`, or `get_replay`.
+- The current config model uses `approved_contracts` and `ContractRule` rather than the guide's simpler `rules:` / `Rule` model.
+- The current memory layer is `keel/memory.py` with `keel-out/keel.sqlite3`, while the guide asks for `record.py` with `keel-out/keel.db`, sessions, events, and replay.
+
+### Conclusion
+- Not everything from `Keel-BUILD-GUIDE.md` is built yet.
+- The largest remaining guide milestones are M2 briefer, M3 MCP server, and M4 recorder/replay.
