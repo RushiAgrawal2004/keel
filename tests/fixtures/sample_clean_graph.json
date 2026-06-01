@@ -1,0 +1,39 @@
+{
+  "directed": true,
+  "multigraph": false,
+  "graph": {},
+  "nodes": [
+    {"id": "ui1", "label": "Dashboard", "file_type": "code", "source_file": "src/components/Dashboard.tsx"},
+    {"id": "ui2", "label": "Profile", "file_type": "code", "source_file": "src/components/Profile.tsx"},
+    {"id": "ui3", "label": "Settings", "file_type": "code", "source_file": "src/components/Settings.tsx"},
+    {"id": "ui4", "label": "Users", "file_type": "code", "source_file": "src/components/Users.tsx"},
+    {"id": "ui5", "label": "UserCard", "file_type": "code", "source_file": "src/components/UserCard.tsx"},
+    {"id": "ui6", "label": "UserList", "file_type": "code", "source_file": "src/components/UserList.tsx"},
+    {"id": "ui7", "label": "UserFilter", "file_type": "code", "source_file": "src/components/UserFilter.tsx"},
+    {"id": "ui8", "label": "UserEditor", "file_type": "code", "source_file": "src/components/UserEditor.tsx"},
+    {"id": "svc1", "label": "getUser", "file_type": "code", "source_file": "src/services/userService.ts"},
+    {"id": "svc2", "label": "listUsers", "file_type": "code", "source_file": "src/services/userService.ts"},
+    {"id": "svc3", "label": "updateUser", "file_type": "code", "source_file": "src/services/userService.ts"},
+    {"id": "svc4", "label": "deleteUser", "file_type": "code", "source_file": "src/services/userService.ts"},
+    {"id": "db1", "label": "getUserById", "file_type": "code", "source_file": "src/db/users.ts"},
+    {"id": "db2", "label": "findUsers", "file_type": "code", "source_file": "src/db/users.ts"},
+    {"id": "db3", "label": "saveUser", "file_type": "code", "source_file": "src/db/users.ts"},
+    {"id": "doc1", "label": "Architecture Notes", "file_type": "document", "source_file": "docs/architecture.md"}
+  ],
+  "links": [
+    {"source": "ui1", "target": "svc1", "relation": "imports", "confidence": "EXTRACTED"},
+    {"source": "ui2", "target": "svc1", "relation": "imports", "confidence": "EXTRACTED"},
+    {"source": "ui3", "target": "svc2", "relation": "imports", "confidence": "EXTRACTED"},
+    {"source": "ui4", "target": "svc2", "relation": "imports", "confidence": "EXTRACTED"},
+    {"source": "ui5", "target": "svc3", "relation": "imports", "confidence": "EXTRACTED"},
+    {"source": "ui6", "target": "svc3", "relation": "imports", "confidence": "EXTRACTED"},
+    {"source": "ui7", "target": "svc4", "relation": "imports", "confidence": "EXTRACTED"},
+    {"source": "ui8", "target": "svc4", "relation": "imports", "confidence": "EXTRACTED"},
+    {"source": "svc1", "target": "db1", "relation": "imports", "confidence": "EXTRACTED"},
+    {"source": "svc2", "target": "db2", "relation": "imports", "confidence": "EXTRACTED"},
+    {"source": "svc3", "target": "db3", "relation": "imports", "confidence": "EXTRACTED"},
+    {"source": "svc4", "target": "db1", "relation": "imports", "confidence": "EXTRACTED"},
+    {"source": "ui1", "target": "db1", "relation": "semantically_similar_to", "confidence": "INFERRED"}
+  ]
+}
+

@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Keel Event",
+  "type": "object",
+  "required": ["id", "created_at", "type", "payload"],
+  "properties": {
+    "id": {"type": "integer"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "type": {"type": "string"},
+    "payload": {"type": "object"}
+  }
+}
+

@@ -1,0 +1,16 @@
+{
+  "directed": true,
+  "multigraph": false,
+  "graph": {},
+  "nodes": [
+    {"id": "ui1", "label": "Dashboard", "file_type": "code", "source_file": "src/components/Dashboard.tsx"},
+    {"id": "svc1", "label": "getUser", "file_type": "code", "source_file": "src/services/userService.ts"},
+    {"id": "db1", "label": "getUserById", "file_type": "code", "source_file": "src/db/users.ts"}
+  ],
+  "links": [
+    {"source": "ui1", "target": "svc1", "relation": "imports", "confidence": "EXTRACTED"},
+    {"source": "svc1", "target": "db1", "relation": "imports", "confidence": "EXTRACTED"},
+    {"source": "ui1", "target": "db1", "relation": "imports", "confidence": "EXTRACTED"}
+  ]
+}
+

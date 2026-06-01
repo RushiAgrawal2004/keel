@@ -1,0 +1,21 @@
+version: 1
+
+project:
+  name: keel
+
+graph:
+  provider: graphify
+  path: graphify-out/graph.json
+
+layers: {}
+zones: {}
+
+ignore:
+  - node_modules
+  - dist
+  - build
+  - coverage
+  - generated
+
+approved_contracts: []
+

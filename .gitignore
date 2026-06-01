@@ -1,0 +1,12 @@
+.env
+__pycache__/
+.pytest_cache/
+*.egg-info/
+graphify-out/
+**/graphify-out/
+graphify-out/**
+**/graphify-out/**
+keel-out/
+**/keel-out/
+keel-out/**
+**/keel-out/**

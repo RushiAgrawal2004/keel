@@ -1,0 +1,17 @@
+{
+  "directed": true,
+  "multigraph": false,
+  "graph": {},
+  "nodes": [
+    {"id": "ui1", "label": "Dashboard", "file_type": "code", "source_file": "src/components/Dashboard.tsx"},
+    {"id": "db1", "label": "getUserById", "file_type": "code", "source_file": "src/db/users.ts"},
+    {"id": "doc1", "label": "Architecture Notes", "file_type": "document", "source_file": "docs/architecture.md"},
+    {"id": "bad1", "label": "Bad Node", "file_type": "code"}
+  ],
+  "links": [
+    {"source": "ui1", "target": "db1", "relation": "imports", "confidence": "EXTRACTED"},
+    {"source": "ui1", "target": "db1", "relation": "semantically_similar_to", "confidence": "INFERRED"},
+    {"source": "ui1", "target": "missing", "relation": "imports", "confidence": "EXTRACTED"}
+  ]
+}
+

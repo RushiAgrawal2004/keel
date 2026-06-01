@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Keel Check Result",
+  "type": "object",
+  "required": ["status", "blocking", "known_debt"],
+  "properties": {
+    "status": {"enum": ["passed", "failed"]},
+    "blocking": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/violation"}
+    },
+    "known_debt": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/violation"}
+    }
+  },
+  "$defs": {
+    "violation": {
+      "type": "object",
+      "required": ["contract_id", "contract_title", "message"],
+      "properties": {
+        "contract_id": {"type": "string"},
+        "contract_title": {"type": "string"},
+        "message": {"type": "string"},
+        "source_file": {"type": ["string", "null"]},
+        "source_id": {"type": ["string", "null"]},
+        "target_id": {"type": ["string", "null"]},
+        "repair_hint": {"type": ["string", "null"]}
+      }
+    }
+  }
+}
+

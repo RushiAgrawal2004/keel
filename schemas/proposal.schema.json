@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Keel Proposed Contract",
+  "type": "object",
+  "required": ["id", "title", "confidence", "rule", "evidence"],
+  "properties": {
+    "id": {"type": "string"},
+    "title": {"type": "string"},
+    "confidence": {"enum": ["low", "medium", "high"]},
+    "rule": {"type": "object", "minProperties": 1, "maxProperties": 1},
+    "evidence": {"type": "object"},
+    "repair": {"type": "object"}
+  },
+  "additionalProperties": true
+}
+

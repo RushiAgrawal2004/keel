@@ -1,0 +1,45 @@
+version: 1
+
+project:
+  name: sample
+
+graph:
+  provider: graphify
+  path: graphify-out/graph.json
+
+layers:
+  UI:
+    - src/components
+  SERVICE:
+    - src/services
+  DATABASE:
+    - src/db
+  TEST:
+    - tests
+
+zones:
+  user:
+    - src/services
+    - src/db
+
+ignore:
+  - node_modules
+
+approved_contracts:
+  - id: ui_never_touches_database
+    title: UI must not access DATABASE directly
+    source: discovered
+    status: approved
+    evidence:
+      summary: Existing UI nodes have zero direct DATABASE edges.
+      ui_nodes: 8
+      database_nodes: 3
+      direct_edges_found: 0
+    rule:
+      forbid_edge:
+        from_layer: UI
+        to_layer: DATABASE
+        relation: "*"
+    repair:
+      route_through_layer: SERVICE
+
