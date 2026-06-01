@@ -13,6 +13,7 @@ from .graphify_runner import ensure_graph
 from .layers import assign_layers_and_zones
 from .models import ApprovedContract, CheckResult, KeelGraph, Violation
 from .repair import repair_hint
+from .rules import check_rules
 
 
 def check_repo(repo_path: Path, changed_files: list[str] | None = None) -> list[Violation]:
@@ -25,8 +26,11 @@ def check_repo_result(repo_path: Path, changed_files: list[str] | None = None) -
     graph = load_graph(graph_path)
     assign_layers_and_zones(graph, config)
     violations: list[Violation] = []
-    for contract in load_approved_contracts(config):
+    approved_contracts = load_approved_contracts(config)
+    for contract in approved_contracts:
         violations.extend(check_contract(graph, contract))
+    if not approved_contracts and config.rules:
+        violations.extend(check_rules(graph, config.rules))
     if changed_files:
         normalized = {_normalize(path) for path in changed_files}
         violations = [

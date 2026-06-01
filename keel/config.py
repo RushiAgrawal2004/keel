@@ -6,7 +6,7 @@ from typing import Any
 
 import yaml
 
-from .models import ApprovedContract, Config, ContractRule, Evidence
+from .models import ApprovedContract, Config, ContractRule, Evidence, Rule
 
 VALID_RULES = {
     "forbid_edge",
@@ -26,6 +26,7 @@ def default_config(project_name: str = "demo-app") -> Config:
         zones={},
         ignore=["node_modules", "dist", "build", "coverage", "generated"],
         approved_contracts=[],
+        rules=[],
     )
 
 
@@ -40,6 +41,7 @@ def load_config(repo_path: Path) -> Config:
     layers = _string_list_map(raw.get("layers", {}), "layers")
     zones = _string_list_map(raw.get("zones", {}), "zones")
     contracts = [_parse_contract(item, layers, zones) for item in raw.get("approved_contracts", []) or []]
+    rules = [_parse_rule(item, layers) for item in raw.get("rules", []) or []]
     ids = [contract.id for contract in contracts]
     if len(ids) != len(set(ids)):
         raise ValueError("Contract ids must be unique")
@@ -52,6 +54,7 @@ def load_config(repo_path: Path) -> Config:
         zones=zones,
         ignore=list(raw.get("ignore", []) or []),
         approved_contracts=contracts,
+        rules=rules or [rule for contract in contracts if (rule := _contract_to_rule(contract)) is not None],
     )
 
 
@@ -65,6 +68,8 @@ def save_config(repo_path: Path, config: Config) -> None:
         "ignore": config.ignore,
         "approved_contracts": [_contract_to_yaml(contract) for contract in config.approved_contracts],
     }
+    if config.rules and not config.approved_contracts:
+        data["rules"] = [_rule_to_yaml(rule) for rule in config.rules]
     (repo_path / ".keel.yml").write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
 
 
@@ -155,3 +160,42 @@ def proposal_to_yaml(proposal: Any) -> dict[str, Any]:
         data["evidence"]["examples"] = proposal.evidence.examples
     return data
 
+
+def _parse_rule(raw: dict[str, Any], layers: dict[str, list[str]]) -> Rule:
+    if "forbid" in raw:
+        params = raw.get("forbid") or {}
+        from_layer = params.get("from")
+        to_layer = params.get("to")
+        for ref in [from_layer, to_layer]:
+            if ref not in layers:
+                raise ValueError(f"Rule references unknown layer: {ref}")
+        return Rule(kind="forbid", from_layer=from_layer, to_layer=to_layer, relation=params.get("relation", "*"))
+    if "no_cycles" in raw:
+        if not isinstance(raw.get("no_cycles"), bool):
+            raise ValueError("no_cycles rule must be a boolean")
+        return Rule(kind="no_cycles")
+    raise ValueError(f"Unknown rule shape: {raw}")
+
+
+def _contract_to_rule(contract: ApprovedContract) -> Rule | None:
+    if contract.status != "approved":
+        return None
+    if contract.rule.kind == "forbid_edge":
+        return Rule(
+            kind="forbid",
+            from_layer=contract.rule.params.get("from_layer"),
+            to_layer=contract.rule.params.get("to_layer"),
+            relation=contract.rule.params.get("relation", "*"),
+        )
+    if contract.rule.kind == "no_cycles_between_layers":
+        return Rule(kind="no_cycles")
+    return None
+
+
+def _rule_to_yaml(rule: Rule) -> dict[str, Any]:
+    if rule.kind == "no_cycles":
+        return {"no_cycles": True}
+    data = {"from": rule.from_layer, "to": rule.to_layer}
+    if rule.relation != "*":
+        data["relation"] = rule.relation
+    return {"forbid": data}

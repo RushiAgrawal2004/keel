@@ -80,6 +80,15 @@ def render_explain(contract: ApprovedContract) -> str:
     return "\n".join(lines)
 
 
+def render_replay(events: list[dict]) -> str:
+    if not events:
+        return "No events found for this session."
+    lines = ["Keel replay:"]
+    for event in events:
+        lines.append(f"- {event.get('ts')} [{event.get('kind')}] {event.get('payload')}")
+    return "\n".join(lines)
+
+
 def _html_violation_section(title: str, violations: list[Violation], css_class: str) -> str:
     if not violations:
         return f"<h2>{escape(title)}</h2><p class=\"good\">None.</p>"

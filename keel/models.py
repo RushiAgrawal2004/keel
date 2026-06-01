@@ -49,6 +49,19 @@ class ContractRule:
     params: dict[str, Any]
 
 
+@dataclass(frozen=True)
+class Rule:
+    kind: Literal["forbid", "no_cycles"]
+    from_layer: str | None = None
+    to_layer: str | None = None
+    relation: str = "*"
+
+    def describe(self) -> str:
+        if self.kind == "no_cycles":
+            return "no circular dependencies"
+        return f"{self.from_layer} -> {self.to_layer} forbidden"
+
+
 @dataclass
 class Evidence:
     summary: str
@@ -107,3 +120,4 @@ class Config:
     zones: dict[str, list[str]]
     ignore: list[str]
     approved_contracts: list[ApprovedContract] = field(default_factory=list)
+    rules: list[Rule] = field(default_factory=list)

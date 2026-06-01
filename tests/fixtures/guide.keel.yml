@@ -1,0 +1,23 @@
+version: 1
+
+project:
+  name: guide-sample
+
+graph:
+  provider: graphify
+  path: graphify-out/graph.json
+
+layers:
+  UI:
+    - src/components
+  SERVICE:
+    - src/services
+  DATABASE:
+    - src/db
+
+rules:
+  - forbid:
+      from: UI
+      to: DATABASE
+  - no_cycles: true
+

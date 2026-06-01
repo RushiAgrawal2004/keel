@@ -7,6 +7,7 @@ from typing import Annotated
 
 import typer
 
+from .brief import make_brief
 from .check import check_repo_result, write_baseline
 from .config import default_config, load_config, save_config
 from .contracts import approve_contract, load_proposals, reject_contract, save_proposals
@@ -19,10 +20,36 @@ from .graphify_runner import ensure_graph
 from .layers import assign_layers_and_zones
 from .memory import export_events_jsonl, list_events, record_event
 from .pr_comment import write_pr_comment
-from .report import render_check_html, render_check_result, render_discover, render_explain
+from .record import get_session
+from .report import render_check_html, render_check_result, render_discover, render_explain, render_replay
+from .serve import main as serve_main
 from .webhook import send_governance_webhook
 
 app = typer.Typer(no_args_is_help=True)
+
+
+@app.command()
+def build(path: Annotated[Path, typer.Argument()] = Path(".")) -> None:
+    repo = path.resolve()
+    config = load_config(repo)
+    graph = load_graph(ensure_graph(repo))
+    assign_layers_and_zones(graph, config)
+    out_dir = repo / "keel-out"
+    out_dir.mkdir(exist_ok=True)
+    layer_counts: dict[str, int] = {}
+    for node in graph.nodes.values():
+        layer_counts[node.layer] = layer_counts.get(node.layer, 0) + 1
+    payload = {
+        "nodes": [asdict(node) for node in graph.nodes.values()],
+        "connections": [asdict(connection) for connection in graph.connections],
+        "layers": layer_counts,
+    }
+    out = out_dir / "keel-graph.json"
+    out.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    typer.echo(f"Built Keel graph: {len(graph.nodes)} nodes, {len(graph.connections)} connections")
+    for layer, count in sorted(layer_counts.items()):
+        typer.echo(f"  {layer}: {count}")
+    typer.echo(f"Wrote {out}")
 
 
 @app.command()
@@ -120,6 +147,25 @@ def check(
         typer.echo(render_check_result(result))
     if result.blocking:
         raise typer.Exit(1)
+
+
+@app.command()
+def brief(path: Annotated[Path, typer.Argument()] = Path(".")) -> None:
+    repo = path.resolve()
+    config = load_config(repo)
+    graph = load_graph(ensure_graph(repo))
+    assign_layers_and_zones(graph, config)
+    typer.echo(make_brief(graph, config))
+
+
+@app.command()
+def replay(session_id: Annotated[int, typer.Argument()], path: Annotated[Path, typer.Argument()] = Path(".")) -> None:
+    typer.echo(render_replay(get_session(path.resolve(), session_id)))
+
+
+@app.command()
+def serve() -> None:
+    serve_main()
 
 
 @app.command()

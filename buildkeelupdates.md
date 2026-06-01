@@ -77,3 +77,46 @@
 ### Conclusion
 - Not everything from `Keel-BUILD-GUIDE.md` is built yet.
 - The largest remaining guide milestones are M2 briefer, M3 MCP server, and M4 recorder/replay.
+
+## 2026-06-01 - Guide-Specific Compatibility Build
+
+### Request
+- Build the missing external guide requirements:
+  - `keel build`
+  - `keel brief`
+  - `keel replay`
+  - `keel/rules.py`
+  - `keel/brief.py`
+  - `keel/record.py`
+  - `keel/serve.py`
+  - MCP server support.
+
+### Planned Approach
+- Keep the richer existing `approved_contracts` model intact.
+- Add compatibility modules and commands that map existing approved contracts to guide-style deterministic rules.
+- Add tests for build, brief, replay, rules, and MCP helper functions.
+
+### Changes
+- Added guide-compatible `Rule` dataclass and `Config.rules`.
+- Added parser support for guide-style `.keel.yml` `rules:` entries.
+- Added `keel/rules.py` with deterministic forbid and no-cycle checks.
+- Added `keel/brief.py` for agent briefing markdown.
+- Added `keel/record.py` with `keel-out/keel.db` sessions/events replay storage.
+- Added `keel/serve.py` with MCP-facing helper functions and stdio server entrypoint.
+- Added CLI commands: `keel build`, `keel brief`, `keel replay`, and `keel serve`.
+- Added guide-focused fixtures and tests for rules, brief, build, replay, and MCP helper functions.
+- Updated `check_repo_result` so guide-style `rules:` configs are enforced when no approved contracts are present.
+- Updated `README.md` with guide-compatible `build`, `brief`, `replay`, and MCP server usage.
+- Added `tests/fixtures/.keel.yml` so `keel check tests/fixtures` satisfies the guide's acceptance flow.
+
+### Verification
+- `python -m pytest` passed with 22 tests.
+- `keel check tests\fixtures` produced exactly one UI -> DATABASE violation and exited with code 1.
+- `python -m compileall keel` passed.
+- `python -m pip install -e ".[dev]"` passed with `mcp` installed.
+- `keel build demo-app` wrote `demo-app/keel-out/keel-graph.json`.
+- `keel brief demo-app` printed the layer map, rules, graph counts, and agent instruction.
+- `keel replay 999999 demo-app` handled an empty session cleanly.
+- `keel serve --help` displayed the command help without starting the server.
+- `python -m build` and `python -m twine check dist/*` passed.
+- Refreshed Graphify after the guide-specific build: `418 nodes`, `1258 edges`, `29 communities`.

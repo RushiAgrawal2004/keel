@@ -24,6 +24,9 @@ keel proposals .
 keel approve ui_never_touches_database .
 keel check . --json --html
 keel baseline .
+keel build .
+keel brief .
+keel replay SESSION_ID .
 keel events .
 keel export-events .
 keel export . --format json
@@ -54,6 +57,23 @@ Keel exposes stable JSON for adapters:
 - `keel export-events .`
 
 The GitHub Actions workflow in `.github/workflows/keel.yml` runs tests and `keel check . --json --html`.
+
+## Agent Briefing And MCP
+
+```bash
+keel build .
+keel brief .
+keel serve
+```
+
+`keel build` writes a layered graph snapshot to `keel-out/keel-graph.json`. `keel brief` prints a short markdown briefing for coding agents. `keel serve` starts a stdio MCP server exposing:
+
+- `get_brief`
+- `check_change`
+- `record_action`
+- `get_replay`
+
+Set `KEEL_REPO_PATH` or pass `--repo` to point the server at a target repo.
 
 ## Dashboard And Reports
 
