@@ -156,3 +156,17 @@
 - `python -m build` created `keel_arch-0.1.0` sdist and wheel.
 - `python -m twine check dist/*` passed.
 - Refreshed Graphify after plug-and-play onboarding changes: `434 nodes`, `1323 edges`, `31 communities`.
+
+## 2026-06-01 - Docs Workflow Fix
+
+### Request
+- Fix the failing `Docs / deploy (push)` GitHub Actions check.
+
+### Fix
+- Changed `.github/workflows/docs.yml` so normal pushes only validate `docs/index.html`.
+- Kept GitHub Pages deployment available, but only through manual `workflow_dispatch`.
+- This avoids failed push checks when GitHub Pages has not been enabled/configured in repo settings yet.
+
+### Verification
+- Confirmed `docs/index.html` exists and is non-empty.
+- `python -m pytest` passed with 23 tests.
