@@ -57,6 +57,50 @@ def test_cli_approve_is_idempotent(tmp_path: Path) -> None:
     assert "Approved ui_never_touches_database" in second.stdout
 
 
+def test_cli_dashboard_graph_quality_and_pr_comment(tmp_path: Path) -> None:
+    fixtures = Path(__file__).parent / "fixtures"
+    _copy_project(tmp_path, fixtures, "sample_clean_graph.json")
+    runner = CliRunner()
+
+    quality = runner.invoke(app, ["graph-quality", str(tmp_path), "--json"])
+    dashboard = runner.invoke(app, ["dashboard", str(tmp_path)])
+    pr_comment = runner.invoke(app, ["pr-comment", str(tmp_path)])
+
+    assert quality.exit_code == 0
+    assert '"score"' in quality.stdout
+    assert dashboard.exit_code == 0
+    assert (tmp_path / "keel-out" / "dashboard.html").exists()
+    assert pr_comment.exit_code == 0
+    assert "pr-comment.md" in pr_comment.stdout
+
+
+def test_cli_adr_compile(tmp_path: Path) -> None:
+    adr_dir = tmp_path / "docs" / "adr"
+    adr_dir.mkdir(parents=True)
+    (adr_dir / "0001-ui-boundary.md").write_text(
+        """---
+keel_contract:
+  id: ui_never_touches_database
+  title: UI must not access DATABASE directly
+  rule:
+    forbid_edge:
+      from_layer: UI
+      to_layer: DATABASE
+      relation: "*"
+---
+# UI Boundary
+""",
+        encoding="utf-8",
+    )
+    runner = CliRunner()
+
+    result = runner.invoke(app, ["adr-compile", str(tmp_path), "--write", "--json"])
+
+    assert result.exit_code == 0
+    assert "ui_never_touches_database" in result.stdout
+    assert (tmp_path / "keel-out" / "adr-contracts.yml").exists()
+
+
 def _copy_project(tmp_path: Path, fixtures: Path, graph_name: str) -> None:
     (tmp_path / ".keel.yml").write_text((fixtures / "sample.keel.yml").read_text(encoding="utf-8"), encoding="utf-8")
     graph_dir = tmp_path / "graphify-out"

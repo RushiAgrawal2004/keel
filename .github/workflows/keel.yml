@@ -6,6 +6,11 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
 jobs:
   architecture-check:
     runs-on: ubuntu-latest
@@ -22,9 +27,24 @@ jobs:
         run: |
           if [ -f graphify-out/graph.json ]; then
             keel check . --json --html
+            keel pr-comment .
+            keel dashboard .
           else
             echo "graphify-out/graph.json not found; skipping Keel check"
           fi
+      - name: Comment on pull request
+        if: github.event_name == 'pull_request' && hashFiles('keel-out/pr-comment.md') != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('keel-out/pr-comment.md', 'utf8');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body
+            });
       - name: Upload Keel report
         if: always()
         uses: actions/upload-artifact@v4
@@ -33,4 +53,6 @@ jobs:
           if-no-files-found: ignore
           path: |
             keel-out/check-report.html
+            keel-out/dashboard.html
+            keel-out/pr-comment.md
             keel-out/keel.sqlite3

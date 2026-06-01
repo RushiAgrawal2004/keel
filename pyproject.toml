@@ -4,6 +4,20 @@ version = "0.1.0"
 description = "Architecture regression tests for AI-generated code, powered by Graphify."
 readme = "README.md"
 requires-python = ">=3.11"
+license = "MIT"
+authors = [
+  {name = "Keel Contributors"},
+]
+keywords = ["architecture", "regression-testing", "graphify", "ai-code", "ci"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Software Development :: Quality Assurance",
+]
 dependencies = [
   "networkx>=3.0",
   "pydantic>=2.0",
@@ -18,6 +32,11 @@ dev = [
 
 [project.scripts]
 keel = "keel.cli:app"
+
+[project.urls]
+Homepage = "https://github.com/RushiAgrawal2004/keel"
+Repository = "https://github.com/RushiAgrawal2004/keel"
+Issues = "https://github.com/RushiAgrawal2004/keel/issues"
 
 [build-system]
 requires = ["setuptools>=68"]

@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Keel Documentation</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; color: #1f2933; background: #f7f7f3; line-height: 1.55; }
+    header { background: #102a43; color: white; padding: 48px 24px; }
+    main { max-width: 980px; margin: 0 auto; padding: 32px 20px 56px; }
+    section { background: white; border: 1px solid #d9e2ec; border-radius: 8px; padding: 20px; margin: 16px 0; }
+    code, pre { background: #f0f4f8; border-radius: 6px; }
+    code { padding: 2px 5px; }
+    pre { padding: 14px; overflow: auto; }
+    a { color: #0b69a3; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Keel</h1>
+    <p>Architecture regression tests for AI-generated code, powered by Graphify.</p>
+  </header>
+  <main>
+    <section>
+      <h2>What Keel Does</h2>
+      <p>Keel reads Graphify's repository graph, discovers architectural invariants, asks humans to approve useful contracts, and then enforces those contracts in CI.</p>
+    </section>
+    <section>
+      <h2>Quickstart</h2>
+      <pre><code>pip install -e ".[dev]"
+graphify .
+keel discover . --write
+keel approve ui_never_touches_database .
+keel check . --json --html
+keel dashboard .</code></pre>
+    </section>
+    <section>
+      <h2>Core Commands</h2>
+      <ul>
+        <li><code>keel discover</code> proposes architecture contracts.</li>
+        <li><code>keel approve</code> moves a proposal into <code>.keel.yml</code>.</li>
+        <li><code>keel check</code> blocks approved contract regressions.</li>
+        <li><code>keel baseline</code> records known existing violations.</li>
+        <li><code>keel dashboard</code> writes a local HTML dashboard.</li>
+        <li><code>keel graph-quality</code> explains graph confidence and gaps.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>ADR Compiler</h2>
+      <p>Use <code>docs/adr/*.md</code> frontmatter to turn architectural decisions into reviewable Keel contracts. The included <code>docs/adr/0001-ui-database-boundary.md</code> file shows the expected format.</p>
+    </section>
+    <section>
+      <h2>Automation</h2>
+      <p>GitHub Actions runs tests, optional Keel checks, PR comments, docs deployment, and PyPI publishing workflows.</p>
+    </section>
+  </main>
+</body>
+</html>

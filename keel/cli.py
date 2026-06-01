@@ -10,12 +10,17 @@ import typer
 from .check import check_repo_result, write_baseline
 from .config import default_config, load_config, save_config
 from .contracts import approve_contract, load_proposals, reject_contract, save_proposals
+from .adr import compile_adr_contracts
+from .dashboard import build_dashboard
 from .discover import discover_contracts
 from .graph import load_graph
+from .graph_quality import graph_quality
 from .graphify_runner import ensure_graph
 from .layers import assign_layers_and_zones
 from .memory import export_events_jsonl, list_events, record_event
+from .pr_comment import write_pr_comment
 from .report import render_check_html, render_check_result, render_discover, render_explain
+from .webhook import send_governance_webhook
 
 app = typer.Typer(no_args_is_help=True)
 
@@ -182,6 +187,72 @@ def export_events(
     repo = path.resolve()
     out = export_events_jsonl(repo, output)
     typer.echo(f"Wrote {out}")
+
+
+@app.command("graph-quality")
+def graph_quality_command(
+    path: Annotated[Path, typer.Argument()] = Path("."),
+    json_output: Annotated[bool, typer.Option("--json", help="Print machine-readable JSON.")] = False,
+) -> None:
+    quality = graph_quality(path.resolve())
+    record_event(path.resolve(), "graph_quality", {"score": quality["score"], "status": quality["status"]})
+    if json_output:
+        typer.echo(json.dumps(quality, indent=2))
+        return
+    typer.echo(f"Graph quality: {quality['score']}/100 ({quality['status']})")
+    for warning in quality.get("warnings", []):
+        typer.echo(f"- {warning}")
+
+
+@app.command()
+def dashboard(
+    path: Annotated[Path, typer.Argument()] = Path("."),
+    output: Annotated[Path | None, typer.Option("--output", help="Dashboard HTML output path.")] = None,
+) -> None:
+    repo = path.resolve()
+    out = build_dashboard(repo, output)
+    record_event(repo, "dashboard_written", {"path": str(out)})
+    typer.echo(f"Wrote {out}")
+
+
+@app.command("pr-comment")
+def pr_comment(
+    path: Annotated[Path, typer.Argument()] = Path("."),
+    output: Annotated[Path | None, typer.Option("--output", help="PR comment markdown output path.")] = None,
+) -> None:
+    repo = path.resolve()
+    out = write_pr_comment(repo, output)
+    record_event(repo, "pr_comment_written", {"path": str(out)})
+    typer.echo(f"Wrote {out}")
+
+
+@app.command("adr-compile")
+def adr_compile(
+    path: Annotated[Path, typer.Argument()] = Path("."),
+    write: Annotated[bool, typer.Option("--write", help="Write keel-out/adr-contracts.yml.")] = False,
+    json_output: Annotated[bool, typer.Option("--json", help="Print machine-readable JSON.")] = False,
+) -> None:
+    repo = path.resolve()
+    contracts = compile_adr_contracts(repo, write=write)
+    record_event(repo, "adr_compile", {"contract_count": len(contracts), "wrote_file": write})
+    if json_output:
+        typer.echo(json.dumps(contracts, indent=2))
+    elif write:
+        typer.echo(f"Wrote {repo / 'keel-out' / 'adr-contracts.yml'}")
+    else:
+        typer.echo(f"Compiled {len(contracts)} ADR contract(s).")
+
+
+@app.command("webhook")
+def webhook(
+    url: Annotated[str, typer.Argument()],
+    path: Annotated[Path, typer.Argument()] = Path("."),
+    event_type: Annotated[str, typer.Option("--event-type", help="Webhook event type.")] = "keel.export",
+) -> None:
+    repo = path.resolve()
+    response = send_governance_webhook(repo, url, event_type=event_type)
+    record_event(repo, "webhook_sent", {"url": url, "status": response["status"]})
+    typer.echo(json.dumps(response, indent=2))
 
 
 def _proposal_payload(proposal) -> dict:

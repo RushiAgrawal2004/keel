@@ -27,6 +27,10 @@ keel baseline .
 keel events .
 keel export-events .
 keel export . --format json
+keel graph-quality . --json
+keel dashboard .
+keel pr-comment .
+keel adr-compile . --write
 ```
 
 `keel check` exits `1` only for new blocking violations. Violations captured by `keel baseline` are reported as known debt.
@@ -50,6 +54,48 @@ Keel exposes stable JSON for adapters:
 - `keel export-events .`
 
 The GitHub Actions workflow in `.github/workflows/keel.yml` runs tests and `keel check . --json --html`.
+
+## Dashboard And Reports
+
+```bash
+keel dashboard .
+keel graph-quality .
+keel pr-comment .
+```
+
+These commands generate local HTML and Markdown artifacts under `keel-out/` for humans, pull requests, and CI artifacts.
+
+## ADR Compiler
+
+Add ADR files under `docs/adr/*.md` with YAML frontmatter:
+
+```yaml
+---
+keel_contract:
+  id: ui_never_touches_database
+  title: UI must not access DATABASE directly
+  rule:
+    forbid_edge:
+      from_layer: UI
+      to_layer: DATABASE
+      relation: "*"
+---
+```
+
+Then run:
+
+```bash
+keel adr-compile . --write
+```
+
+## PyPI And Hosted Docs
+
+The repo includes:
+
+- `.github/workflows/publish.yml` for PyPI publishing from GitHub releases or manual workflow dispatch.
+- `.github/workflows/docs.yml` for GitHub Pages deployment from `docs/`.
+
+Publishing requires configuring PyPI trusted publishing or an equivalent repository secret.
 
 ## Limitations
 
