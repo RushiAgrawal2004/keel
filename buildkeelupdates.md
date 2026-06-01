@@ -170,3 +170,17 @@
 ### Verification
 - Confirmed `docs/index.html` exists and is non-empty.
 - `python -m pytest` passed with 23 tests.
+
+## 2026-06-01 - Architecture Documentation
+
+### Request
+- Add an architecture file to the repo.
+
+### Changes
+- Added `ARCHITECTURE.md` at the repo root.
+- Documented Keel's system flow, core concepts, modules, artifacts, contract lifecycle, rule types, MCP surface, CI setup, and design constraints.
+- Linked `ARCHITECTURE.md` from `README.md`.
+
+### Verification
+- `python -m pytest` passed with 23 tests.
+- Refreshed Graphify after adding architecture documentation: `440 nodes`, `1332 edges`, `30 communities`.

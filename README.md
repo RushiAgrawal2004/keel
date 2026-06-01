@@ -17,6 +17,8 @@ keel check .
 
 Keel reads `graphify-out/graph.json`, proposes deterministic architecture contracts from the graph, and enforces only contracts a human approved in `.keel.yml`.
 
+For the internal design, see [ARCHITECTURE.md](ARCHITECTURE.md).
+
 ## Commands
 
 ```bash
