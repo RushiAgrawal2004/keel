@@ -294,3 +294,36 @@
 - `python -m twine check dist/*` passed.
 - First Graphify refresh attempt hit a temporary Gemini 503 high-demand error; retry succeeded.
 - Refreshed Graphify after project-manager changes: `521 nodes`, `1719 edges`, `30 communities`.
+
+## 2026-06-02 - Safe Context And Manager Health
+
+### Request
+- Continue hardening Keel core manager loop, SQLite memory, MCP setup, Claude/Codex lifecycle, safe context, evals, docs, packaging, and Graphify integration.
+
+### Changes
+- Added safe context behavior to `keel context`:
+  - coverage labels (`HIGH`, `MEDIUM`, `LOW`)
+  - safety instructions for agents
+  - stale-memory warning
+  - explicit fallback instructions when no memory matches
+- Added `graph_status()` in `keel/graphify_runner.py`.
+- Added `manager_status()` in `keel/manager.py`.
+- Added CLI commands:
+  - `keel manager-status`
+  - `keel graph-status`
+- Added MCP tools:
+  - `mcp_project_status`
+  - `mcp_graph_status`
+- Added `MEMORY_ARCHITECTURE.md` capture to `remember_project_context()`.
+- Updated hook configs and manager instructions to include status tools.
+- Updated tests for safe context fallback, manager status, graph status, and MCP project status.
+
+### Verification
+- Targeted memory/CLI/MCP tests passed: `7 passed`.
+- `python -m keel.cli context "totally unknown task" --repo . --limit 1` returned a low-coverage safe context pack.
+- `python -m keel.cli manager-status . --json` reported memory, sync, and Graphify graph health.
+- Full test suite passed: `32 passed`.
+- `python -m build` created the `keel_arch-0.1.0` sdist and wheel.
+- `python -m keel.cli graph-status . --json` reported the current Graphify graph status.
+- `python -m twine check dist/*` passed.
+- Refreshed Graphify after safe-context/status changes: `535 nodes`, `1787 edges`, `30 communities`.

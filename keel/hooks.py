@@ -51,6 +51,8 @@ def hook_config(repo_path: Path, client: str = "codex") -> dict[str, Any]:
                 "mcp_memory_bootstrap",
                 "mcp_memory_context",
                 "mcp_project_sync",
+                "mcp_project_status",
+                "mcp_graph_status",
                 "mcp_check_change",
             ],
         },

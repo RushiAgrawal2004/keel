@@ -16,6 +16,7 @@ from keel.serve import (
     memory_context,
     memory_search,
     memory_write,
+    project_status,
     project_sync,
     record_action,
 )
@@ -98,12 +99,14 @@ def test_serve_memory_helpers(tmp_path: Path) -> None:
     matches = memory_search("what should codex recall?", repo_path=tmp_path)
     context = memory_context("codex architecture", repo_path=tmp_path)
     sync = project_sync(update_graph=False, repo_path=tmp_path)
+    status = project_status(repo_path=tmp_path)
 
     assert bootstrap["count"] == 1
     assert write["ok"] is True
     assert matches[0]["kind"] == "preference"
     assert "Keel Memory Context" in context
     assert sync["memory_count"] == 1
+    assert status["memory_count"] >= 1
 
 
 def _copy_guide_project(tmp_path: Path, fixtures: Path) -> None:

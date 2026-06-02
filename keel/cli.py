@@ -16,7 +16,7 @@ from .dashboard import build_dashboard
 from .discover import discover_contracts
 from .graph import load_graph
 from .graph_quality import graph_quality
-from .graphify_runner import ensure_graph
+from .graphify_runner import ensure_graph, graph_status
 from .layers import assign_layers_and_zones
 from .memory import (
     context_pack,
@@ -36,7 +36,7 @@ from .evals import run_memory_eval
 from .hooks import hook_config, write_hook_config
 from .agent_setup import agent_setup as build_agent_setup
 from .agent_setup import write_agent_setup
-from .manager import sync_project
+from .manager import manager_status, sync_project
 from .onboard import doctor as run_doctor
 from .onboard import mcp_config, pretty_json, quickstart as run_quickstart
 from .onboard import write_preset_config
@@ -343,6 +343,37 @@ def sync_command(
         typer.echo(f"Graph updated: {result['graph_path']}")
     if result["graph_error"]:
         typer.echo(f"Graph update skipped/failed: {result['graph_error']}")
+
+
+@app.command("manager-status")
+def manager_status_command(
+    path: Annotated[Path, typer.Argument(help="Repository path.")] = Path("."),
+    json_output: Annotated[bool, typer.Option("--json", help="Print machine-readable JSON.")] = False,
+) -> None:
+    status = manager_status(path.resolve())
+    if json_output:
+        typer.echo(json.dumps(status, indent=2))
+        return
+    typer.echo(f"Keel manager status for {status['repo']}")
+    typer.echo(f"Memories: {status['memory_count']}")
+    typer.echo(f"Graph: {'present' if status['graph']['exists'] else 'missing'} ({status['graph']['nodes']} nodes, {status['graph']['edges']} edges)")
+    for warning in status["warnings"]:
+        typer.echo(f"Warning: {warning}")
+
+
+@app.command("graph-status")
+def graph_status_command(
+    path: Annotated[Path, typer.Argument(help="Repository path.")] = Path("."),
+    json_output: Annotated[bool, typer.Option("--json", help="Print machine-readable JSON.")] = False,
+) -> None:
+    status = graph_status(path.resolve())
+    if json_output:
+        typer.echo(json.dumps(status, indent=2))
+        return
+    typer.echo(f"Graph provider: {status['provider']}")
+    typer.echo(f"Graph path: {status['path']}")
+    typer.echo(f"Exists: {status['exists']}")
+    typer.echo(f"Nodes: {status['nodes']} Edges: {status['edges']}")
 
 
 @app.command("agent-setup")

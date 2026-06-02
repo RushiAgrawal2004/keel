@@ -80,7 +80,7 @@ session_start
 
 before_task
   -> keel context "<task>"
-  -> agent receives verified memories and warnings
+  -> agent receives coverage label, verified memories, and warnings
 
 agent_edits
   -> agent reads files and changes code
@@ -95,6 +95,15 @@ next_session
 ```
 
 Keel does not directly control Claude Code or Codex. The client must call Keel through CLI hooks or MCP tools. Keel owns memory, graph sync, event logs, verification, and context packaging.
+
+Health checks:
+
+```bash
+keel manager-status .
+keel graph-status .
+```
+
+These tell an agent whether memory exists, whether a sync event was recorded, and whether the Graphify graph is available.
 
 ## Layer 2: Encoding Gate
 
@@ -225,6 +234,8 @@ keel context "debug dashboard failing test" --repo .
 
 Output is Markdown with:
 
+- coverage label
+- safety instructions
 - query
 - memory id
 - memory kind
@@ -293,6 +304,8 @@ Current MCP memory tools:
 - `mcp_memory_bootstrap`
 - `mcp_memory_context`
 - `mcp_project_sync`
+- `mcp_project_status`
+- `mcp_graph_status`
 
 These sit beside architecture tools like:
 

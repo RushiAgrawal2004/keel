@@ -220,6 +220,8 @@ keel webhook URL .
 - `mcp_memory_bootstrap`: imports project context into memory.
 - `mcp_memory_context`: returns a markdown memory context pack for an agent task.
 - `mcp_project_sync`: bootstraps memory, refreshes the graph when available, and records a project sync event.
+- `mcp_project_status`: returns memory, sync, and graph health for the repo.
+- `mcp_graph_status`: returns Graphify provider, graph path, node count, and edge count.
 
 This makes Keel usable as a plug-and-play architecture guard for coding agents.
 

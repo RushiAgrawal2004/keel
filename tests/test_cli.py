@@ -200,14 +200,21 @@ def test_cli_agent_setup_and_sync(tmp_path: Path) -> None:
 
     sync = runner.invoke(app, ["sync", str(tmp_path), "--no-graph", "--json"])
     setup = runner.invoke(app, ["agent-setup", str(tmp_path), "--client", "claude-code", "--write", "--json"])
+    manager_status = runner.invoke(app, ["manager-status", str(tmp_path), "--json"])
+    graph_status = runner.invoke(app, ["graph-status", str(tmp_path), "--json"])
 
     assert sync.exit_code == 0
     assert '"memory_count": 1' in sync.stdout
     assert setup.exit_code == 0
     assert '"mcpServers"' in setup.stdout
     assert "mcp_project_sync" in setup.stdout
+    assert "mcp_project_status" in setup.stdout
     assert (tmp_path / "keel-out" / "agent-setup" / "claude-code.json").exists()
     assert (tmp_path / "keel-out" / "agent-setup" / "claude-code-KEEL.md").exists()
+    assert manager_status.exit_code == 0
+    assert '"memory_count": 1' in manager_status.stdout
+    assert graph_status.exit_code == 0
+    assert '"exists": false' in graph_status.stdout
 
 
 def _copy_project(tmp_path: Path, fixtures: Path, graph_name: str) -> None:

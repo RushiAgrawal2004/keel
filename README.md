@@ -27,6 +27,8 @@ keel remember "Always update buildkeelupdates.md after Keel changes." --kind pre
 keel sync .
 keel recall "how do I run tests?" --repo . --verify --plan
 keel context "debug the dashboard" --repo .
+keel manager-status . --json
+keel graph-status . --json
 keel agent-setup . --client claude-code --write
 keel memory-architecture . --write
 keel memories --repo .
@@ -37,6 +39,8 @@ keel hooks . --client codex --write
 Keel stores durable memory in `keel-out/keel.sqlite3`. Memories can be project summaries, architecture notes, user preferences, decisions, session facts, or any other context an agent should remember across runs.
 
 The memory engine includes a deterministic encoding gate, typed memory classification, SQLite FTS-backed retrieval when available, query planning, reranking signals, repo verification, context-pack rendering, lifecycle hook configs, and a built-in memory eval suite.
+
+`keel context` is safety-oriented: it labels coverage, includes verification status, and tells agents to inspect files directly when memory is weak or missing.
 
 ## Commands
 
@@ -53,6 +57,8 @@ keel remember "Run tests with python -m pytest." --kind project
 keel sync .
 keel recall "tests"
 keel context "architecture boundaries"
+keel manager-status .
+keel graph-status .
 keel agent-setup . --client claude-code --write
 keel memory-architecture .
 keel eval .
@@ -107,6 +113,8 @@ keel serve
 - `memory_bootstrap`
 - `memory_context`
 - `project_sync`
+- `project_status`
+- `graph_status`
 
 Set `KEEL_REPO_PATH` or pass `--repo` to point the server at a target repo.
 
@@ -123,6 +131,8 @@ This writes MCP setup and Keel manager instructions under `keel-out/agent-setup/
 - before task: `keel context "<task>"`
 - after task: `keel remember "<summary>" --kind session --tag agent --gate`
 - finish: run tests, `keel check .`, and `keel eval .`
+
+Use `keel manager-status .` and `keel graph-status .` to check whether memory, sync events, and Graphify outputs are healthy.
 
 ## Plug-And-Play Setup
 

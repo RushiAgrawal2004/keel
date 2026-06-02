@@ -84,3 +84,11 @@ def test_memory_encoding_gate_plan_context_and_verify(tmp_path: Path) -> None:
     assert encoded["kind"] in {"preference", "test"}
     assert "architecture" in plan["target_kinds"]
     assert verification["status"] == "verified"
+
+
+def test_context_pack_warns_when_memory_missing(tmp_path: Path) -> None:
+    pack = context_pack(tmp_path, "unknown task")
+
+    assert "Coverage: LOW" in pack
+    assert "No verified memories matched" in pack
+    assert "Inspect repo files directly" in pack

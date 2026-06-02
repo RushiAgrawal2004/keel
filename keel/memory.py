@@ -171,6 +171,18 @@ def remember_project_context(repo_path: Path) -> list[int]:
                 tags=["architecture", "system"],
             )
         )
+    memory_architecture = repo_path / "MEMORY_ARCHITECTURE.md"
+    if memory_architecture.exists():
+        ids.append(
+            remember(
+                repo_path,
+                _summarize_text(memory_architecture.read_text(encoding="utf-8"), max_chars=1800),
+                kind="architecture",
+                title="Memory Architecture Summary",
+                source="MEMORY_ARCHITECTURE.md",
+                tags=["memory", "architecture", "agent"],
+            )
+        )
     graph_report = repo_path / "graphify-out" / "GRAPH_REPORT.md"
     if graph_report.exists():
         ids.append(
@@ -232,8 +244,41 @@ def recall(
 def context_pack(repo_path: Path, query: str, *, limit: int = 6) -> str:
     matches = recall(repo_path, query, limit=limit, verify=True)
     if not matches:
-        return "No Keel memories matched this query."
-    lines = ["# Keel Memory Context", "", f"Query: {query}", ""]
+        return "\n".join(
+            [
+                "# Keel Memory Context",
+                "",
+                f"Query: {query}",
+                "",
+                "Coverage: LOW",
+                "",
+                "No verified memories matched this query.",
+                "",
+                "Agent safety instructions:",
+                "- Do not assume Keel has context for this task.",
+                "- Inspect repo files directly.",
+                "- Run targeted search with `rg`.",
+                "- Check tests and project config.",
+                "- Store the discovered result with `keel remember ... --kind session --gate`.",
+            ]
+        )
+    best_score = max(float(item.get("score", 0)) for item in matches)
+    stale_count = sum(1 for item in matches if item.get("verification", {}).get("status") == "stale")
+    coverage = "HIGH" if best_score >= 8 and stale_count == 0 else "MEDIUM" if best_score >= 3 else "LOW"
+    lines = [
+        "# Keel Memory Context",
+        "",
+        f"Query: {query}",
+        f"Coverage: {coverage}",
+        "",
+        "Agent safety instructions:",
+        "- Treat current repo files, tests, and Keel checks as source of truth.",
+        "- Verify stale or unverified memories before editing.",
+        "- If important context is missing, inspect files directly and store what you learn after the task.",
+        "",
+    ]
+    if stale_count:
+        lines.extend([f"Warning: {stale_count} stale memory item(s) were retrieved.", ""])
     for item in matches:
         verification = item.get("verification", {})
         lines.extend(
