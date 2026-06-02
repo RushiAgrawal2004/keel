@@ -159,6 +159,35 @@ def test_cli_remember_from_project(tmp_path: Path) -> None:
     assert '"Project README Summary"' in recall.stdout
 
 
+def test_cli_memory_context_eval_and_hooks(tmp_path: Path) -> None:
+    runner = CliRunner()
+    runner.invoke(
+        app,
+        [
+            "remember",
+            "Run tests with python -m pytest.",
+            "--repo",
+            str(tmp_path),
+            "--kind",
+            "test",
+            "--gate",
+        ],
+    )
+
+    context = runner.invoke(app, ["context", "how to test", "--repo", str(tmp_path)])
+    evaluation = runner.invoke(app, ["eval", str(tmp_path), "--json"])
+    hooks = runner.invoke(app, ["hooks", str(tmp_path), "--client", "codex", "--write"])
+
+    assert context.exit_code == 0
+    assert "Keel Memory Context" in context.stdout
+    assert evaluation.exit_code == 0
+    assert '"suite": "keel-memory-v1"' in evaluation.stdout
+    assert (tmp_path / "keel-out" / "memory-eval.json").exists()
+    assert hooks.exit_code == 0
+    assert "session_start" in hooks.stdout
+    assert (tmp_path / "keel-out" / "hooks" / "codex-hooks.json").exists()
+
+
 def _copy_project(tmp_path: Path, fixtures: Path, graph_name: str) -> None:
     (tmp_path / ".keel.yml").write_text((fixtures / "sample.keel.yml").read_text(encoding="utf-8"), encoding="utf-8")
     graph_dir = tmp_path / "graphify-out"

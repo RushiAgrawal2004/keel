@@ -8,7 +8,16 @@ from keel.config import load_config
 from keel.graph import load_graph
 from keel.layers import assign_layers_and_zones
 from keel.record import get_session, log_action, start_session
-from keel.serve import check_change, get_brief, get_replay, memory_bootstrap, memory_search, memory_write, record_action
+from keel.serve import (
+    check_change,
+    get_brief,
+    get_replay,
+    memory_bootstrap,
+    memory_context,
+    memory_search,
+    memory_write,
+    record_action,
+)
 
 
 def test_brief_contains_layers_rules_and_instruction(tmp_path: Path) -> None:
@@ -86,10 +95,12 @@ def test_serve_memory_helpers(tmp_path: Path) -> None:
     bootstrap = memory_bootstrap(tmp_path)
     write = memory_write("Codex should recall architecture before editing.", kind="preference", tags=["codex"], repo_path=tmp_path)
     matches = memory_search("what should codex recall?", repo_path=tmp_path)
+    context = memory_context("codex architecture", repo_path=tmp_path)
 
     assert bootstrap["count"] == 1
     assert write["ok"] is True
     assert matches[0]["kind"] == "preference"
+    assert "Keel Memory Context" in context
 
 
 def _copy_guide_project(tmp_path: Path, fixtures: Path) -> None:

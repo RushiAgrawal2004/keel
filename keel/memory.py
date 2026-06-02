@@ -7,6 +7,33 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+MEMORY_KINDS = {
+    "project",
+    "architecture",
+    "decision",
+    "preference",
+    "correction",
+    "bug",
+    "test",
+    "dependency",
+    "session",
+    "graph",
+    "config",
+    "note",
+}
+
+KIND_HINTS = {
+    "architecture": {"architecture", "layer", "boundary", "database", "service", "ui", "graph", "contract", "rule"},
+    "decision": {"decided", "because", "why", "reason", "chosen", "package", "name"},
+    "preference": {"prefer", "always", "never", "user", "style", "tone"},
+    "correction": {"wrong", "fix", "correction", "mistake", "do not", "don't"},
+    "bug": {"bug", "failed", "failure", "error", "regression", "broken"},
+    "test": {"test", "pytest", "verify", "suite", "pass", "fail"},
+    "dependency": {"dependency", "package", "install", "pip", "npm", "version"},
+    "session": {"session", "changed", "built", "implemented", "pushed", "commit"},
+    "project": {"project", "repo", "command", "readme", "cli"},
+}
+
 
 def remember(
     repo_path: Path,
@@ -18,7 +45,16 @@ def remember(
     source: str = "manual",
     tags: list[str] | None = None,
     metadata: dict[str, Any] | None = None,
+    gate: bool = False,
 ) -> int:
+    encoded = encode_memory(content, kind=kind, title=title, source=source, tags=tags or [])
+    if gate and not encoded["should_store"]:
+        record_event(repo_path, "memory_rejected", {"reason": encoded["reason"], "source": source})
+        return 0
+    kind = encoded["kind"]
+    title = encoded["title"]
+    tags = encoded["tags"]
+    metadata = {**(metadata or {}), "encoding": encoded}
     db_path = _db_path(repo_path)
     db_path.parent.mkdir(exist_ok=True)
     clean_tags = _clean_tags(tags or [])
@@ -43,12 +79,70 @@ def remember(
             ),
         )
         memory_id = int(cursor.lastrowid)
+        _upsert_fts(conn, memory_id, title or _title_from_content(content), content.strip(), clean_tags)
     record_event(
         repo_path,
         "memory_written",
         {"memory_id": memory_id, "kind": kind, "scope": scope, "source": source, "tags": clean_tags},
     )
     return memory_id
+
+
+def encode_memory(
+    content: str,
+    *,
+    kind: str = "note",
+    title: str | None = None,
+    source: str = "manual",
+    tags: list[str] | None = None,
+) -> dict[str, Any]:
+    stripped = content.strip()
+    terms = _terms(stripped)
+    inferred_kind = kind if kind in MEMORY_KINDS and kind != "note" else _infer_kind(stripped, tags or [])
+    inferred_tags = sorted(set(_clean_tags(tags or []) + [inferred_kind]))
+    title_text = title or _title_from_content(stripped)
+    has_signal = len(terms) >= 3 or inferred_kind in {"preference", "decision", "correction"}
+    too_short = len(stripped) < 12
+    duplicate_noise = stripped.lower() in {"ok", "okay", "thanks", "thank you", "yes", "no"}
+    should_store = bool(stripped) and has_signal and not too_short and not duplicate_noise
+    confidence = 0.85 if should_store and inferred_kind != "note" else 0.55 if should_store else 0.1
+    reason = "stored: useful typed memory" if should_store else "rejected: low long-term signal"
+    return {
+        "should_store": should_store,
+        "kind": inferred_kind,
+        "title": title_text,
+        "tags": inferred_tags,
+        "confidence": confidence,
+        "reason": reason,
+        "source": source,
+    }
+
+
+def recall_plan(query: str) -> dict[str, Any]:
+    terms = _terms(query)
+    raw = query.lower()
+    kind_scores: dict[str, int] = {}
+    term_set = set(terms)
+    for kind, hints in KIND_HINTS.items():
+        overlap = len(term_set.intersection(hints))
+        if overlap:
+            kind_scores[kind] = overlap
+    if "why" in raw or "reason" in raw or "because" in raw:
+        kind_scores["decision"] = kind_scores.get("decision", 0) + 2
+    if "test" in raw or "pytest" in raw:
+        kind_scores["test"] = kind_scores.get("test", 0) + 2
+    if "rule" in raw or "layer" in raw or "database" in raw or "architecture" in raw:
+        kind_scores["architecture"] = kind_scores.get("architecture", 0) + 2
+    if not kind_scores:
+        kind_scores["project"] = 1
+        kind_scores["note"] = 1
+    ranked = sorted(kind_scores, key=kind_scores.get, reverse=True)
+    return {
+        "query": query,
+        "terms": terms,
+        "target_kinds": ranked[:3],
+        "channels": ["fts", "keyword", "type", "recency", "verification"],
+    }
 
 
 def remember_project_context(repo_path: Path) -> list[int]:
@@ -111,22 +205,46 @@ def recall(
     limit: int = 5,
     kind: str | None = None,
     tags: list[str] | None = None,
+    verify: bool = False,
 ) -> list[dict[str, Any]]:
+    plan = recall_plan(query)
     memories = list_memories(repo_path, limit=100000, kind=kind)
     required_tags = set(_clean_tags(tags or []))
     query_terms = _terms(query)
+    fts_scores = _fts_scores(repo_path, query_terms)
     scored: list[tuple[float, dict[str, Any]]] = []
     for memory in memories:
         memory_tags = set(memory["tags"])
         if required_tags and not required_tags.issubset(memory_tags):
             continue
-        score = _score_memory(memory, query_terms)
+        score, channels = _score_memory(memory, query_terms, plan, fts_scores.get(memory["id"], 0.0))
         if score > 0 or not query_terms:
             item = dict(memory)
             item["score"] = round(score, 3)
+            item["channels"] = channels
+            if verify:
+                item["verification"] = verify_memory(repo_path, item)
             scored.append((score, item))
     scored.sort(key=lambda item: (item[0], item[1]["id"]), reverse=True)
     return [item for _, item in scored[:limit]]
+
+
+def context_pack(repo_path: Path, query: str, *, limit: int = 6) -> str:
+    matches = recall(repo_path, query, limit=limit, verify=True)
+    if not matches:
+        return "No Keel memories matched this query."
+    lines = ["# Keel Memory Context", "", f"Query: {query}", ""]
+    for item in matches:
+        verification = item.get("verification", {})
+        lines.extend(
+            [
+                f"## #{item['id']} {item['kind']} - {item['title']}",
+                f"score: {item['score']} | source: {item['source']} | status: {verification.get('status', 'unknown')}",
+                item["content"],
+                "",
+            ]
+        )
+    return "\n".join(lines).rstrip()
 
 
 def list_memories(repo_path: Path, limit: int = 50, kind: str | None = None) -> list[dict[str, Any]]:
@@ -157,9 +275,37 @@ def forget_memory(repo_path: Path, memory_id: int) -> bool:
         _ensure_schema(conn)
         cursor = conn.execute("delete from memories where id = ?", (memory_id,))
         deleted = cursor.rowcount > 0
+        if deleted:
+            _delete_fts(conn, memory_id)
     if deleted:
         record_event(repo_path, "memory_deleted", {"memory_id": memory_id})
     return deleted
+
+
+def verify_memory(repo_path: Path, memory: dict[str, Any]) -> dict[str, Any]:
+    source = str(memory.get("source") or "")
+    content = str(memory.get("content") or "")
+    evidence: list[str] = []
+    stale: list[str] = []
+    if source and source not in {"manual", "mcp", "agent"} and not source.startswith("http"):
+        source_path = repo_path / source
+        if source_path.exists():
+            evidence.append(f"source exists: {source}")
+        else:
+            stale.append(f"source missing: {source}")
+    for token in _path_mentions(content):
+        candidate = repo_path / token
+        if candidate.exists():
+            evidence.append(f"path exists: {token}")
+        elif "/" in token or "\\" in token:
+            stale.append(f"path missing: {token}")
+    if stale:
+        status = "stale"
+    elif evidence:
+        status = "verified"
+    else:
+        status = "unverified"
+    return {"status": status, "evidence": evidence, "stale": stale}
 
 
 def record_event(repo_path: Path, event_type: str, payload: dict[str, Any]) -> int:
@@ -232,6 +378,16 @@ def _ensure_schema(conn: sqlite3.Connection) -> None:
     )
     conn.execute("create index if not exists idx_memories_kind on memories(kind)")
     conn.execute("create index if not exists idx_memories_source on memories(source)")
+    try:
+        conn.execute(
+            """
+            create virtual table if not exists memories_fts
+            using fts5(title, content, tags, content='memories', content_rowid='id')
+            """
+        )
+    except sqlite3.OperationalError:
+        # Some Python builds omit FTS5; keyword/type scoring remains available.
+        pass
 
 
 def _row_to_event(row: tuple[int, str, str, str]) -> dict[str, Any]:
@@ -295,25 +451,101 @@ def _terms(text: str) -> list[str]:
     return [term for term in re.findall(r"[a-zA-Z0-9_./-]+", text.lower()) if len(term) > 2 and term not in stop]
 
 
-def _score_memory(memory: dict[str, Any], query_terms: list[str]) -> float:
+def _infer_kind(content: str, tags: list[str]) -> str:
+    haystack = " ".join([content.lower(), " ".join(tags).lower()])
+    best = ("note", 0)
+    for kind, hints in KIND_HINTS.items():
+        score = sum(1 for hint in hints if hint in haystack)
+        if score > best[1]:
+            best = (kind, score)
+    return best[0]
+
+
+def _score_memory(
+    memory: dict[str, Any],
+    query_terms: list[str],
+    plan: dict[str, Any],
+    fts_score: float,
+) -> tuple[float, list[str]]:
     if not query_terms:
-        return 1.0
+        return 1.0, ["recency"]
     title = memory["title"].lower()
     content = memory["content"].lower()
     source = memory["source"].lower()
     tags = " ".join(memory["tags"]).lower()
     score = 0.0
+    channels: list[str] = []
+    if fts_score:
+        score += fts_score
+        channels.append("fts")
     for term in query_terms:
         if term in title:
             score += 4.0
+            channels.append("keyword:title")
         if term in tags:
             score += 3.0
+            channels.append("keyword:tag")
         if term in source:
             score += 2.0
+            channels.append("keyword:source")
         count = content.count(term)
         if count:
             score += min(5.0, float(count))
-    return score
+            channels.append("keyword:content")
+    if memory["kind"] in plan.get("target_kinds", []):
+        score += 2.0
+        channels.append("type")
+    metadata = memory.get("metadata") or {}
+    confidence = float((metadata.get("encoding") or {}).get("confidence") or 0.5)
+    score += confidence
+    channels.append("confidence")
+    return score, sorted(set(channels))
+
+
+def _fts_scores(repo_path: Path, query_terms: list[str]) -> dict[int, float]:
+    if not query_terms:
+        return {}
+    db_path = _db_path(repo_path)
+    if not db_path.exists():
+        return {}
+    match = " OR ".join(term.replace('"', "") for term in query_terms[:8])
+    if not match:
+        return {}
+    try:
+        with sqlite3.connect(db_path) as conn:
+            _ensure_schema(conn)
+            rows = conn.execute(
+                "select rowid, rank from memories_fts where memories_fts match ? order by rank limit 50",
+                (match,),
+            ).fetchall()
+    except sqlite3.OperationalError:
+        return {}
+    scores: dict[int, float] = {}
+    for rowid, rank in rows:
+        scores[int(rowid)] = max(0.1, min(8.0, abs(float(rank)) * 100.0))
+    return scores
+
+
+def _upsert_fts(conn: sqlite3.Connection, memory_id: int, title: str, content: str, tags: list[str]) -> None:
+    try:
+        conn.execute("delete from memories_fts where rowid = ?", (memory_id,))
+        conn.execute(
+            "insert into memories_fts(rowid, title, content, tags) values (?, ?, ?, ?)",
+            (memory_id, title, content, " ".join(tags)),
+        )
+    except sqlite3.OperationalError:
+        pass
+
+
+def _delete_fts(conn: sqlite3.Connection, memory_id: int) -> None:
+    try:
+        conn.execute("delete from memories_fts where rowid = ?", (memory_id,))
+    except sqlite3.OperationalError:
+        pass
+
+
+def _path_mentions(text: str) -> list[str]:
+    return re.findall(r"[\w.-]+(?:/|\\)[\w./\\-]+", text)
 
 
 def _summarize_text(text: str, *, max_chars: int) -> str:

@@ -8,7 +8,7 @@ license = "MIT"
 authors = [
   {name = "Keel Contributors"},
 ]
-keywords = ["agent-memory", "architecture", "regression-testing", "graphify", "ai-code", "mcp", "ci"]
+keywords = ["agent-memory", "architecture", "benchmark", "regression-testing", "graphify", "ai-code", "mcp", "ci"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Environment :: Console",

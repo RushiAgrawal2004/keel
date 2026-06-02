@@ -19,15 +19,19 @@ from .graph_quality import graph_quality
 from .graphify_runner import ensure_graph
 from .layers import assign_layers_and_zones
 from .memory import (
+    context_pack,
     export_events_jsonl,
     forget_memory,
     list_events,
     list_memories,
     recall as recall_memories,
+    recall_plan,
     record_event,
     remember as remember_memory,
     remember_project_context,
 )
+from .evals import run_memory_eval
+from .hooks import hook_config, write_hook_config
 from .onboard import doctor as run_doctor
 from .onboard import mcp_config, pretty_json, quickstart as run_quickstart
 from .onboard import write_preset_config
@@ -230,6 +234,7 @@ def remember(
     title: Annotated[str | None, typer.Option("--title", help="Short title for this memory.")] = None,
     tag: Annotated[list[str] | None, typer.Option("--tag", help="Tag to attach. Can be used multiple times.")] = None,
     from_project: Annotated[bool, typer.Option("--from-project", help="Import README, architecture, Graphify report, and .keel.yml summaries.")] = False,
+    gate: Annotated[bool, typer.Option("--gate", help="Use the encoding gate and reject low-signal memories.")] = False,
     json_output: Annotated[bool, typer.Option("--json", help="Print machine-readable JSON.")] = False,
 ) -> None:
     path = repo.resolve()
@@ -240,7 +245,10 @@ def remember(
         return
     if not content:
         raise typer.BadParameter("Provide memory text or use --from-project.")
-    memory_id = remember_memory(path, content, kind=kind, title=title, tags=tag or [])
+    memory_id = remember_memory(path, content, kind=kind, title=title, tags=tag or [], gate=gate)
+    if memory_id == 0:
+        typer.echo("Memory rejected by encoding gate.")
+        return
     payload = {"id": memory_id, "kind": kind, "title": title or content[:80]}
     typer.echo(json.dumps(payload, indent=2) if json_output else f"Remembered memory #{memory_id}.")
 
@@ -252,18 +260,27 @@ def recall(
     limit: Annotated[int, typer.Option("--limit", help="Maximum memories to return.")] = 5,
     kind: Annotated[str | None, typer.Option("--kind", help="Only recall this memory kind.")] = None,
     tag: Annotated[list[str] | None, typer.Option("--tag", help="Require tag. Can be used multiple times.")] = None,
+    verify: Annotated[bool, typer.Option("--verify", help="Verify recalled memory against files in the repo.")] = False,
+    show_plan: Annotated[bool, typer.Option("--plan", help="Show retrieval plan.")] = False,
     json_output: Annotated[bool, typer.Option("--json", help="Print machine-readable JSON.")] = False,
 ) -> None:
-    memories = recall_memories(repo.resolve(), query, limit=limit, kind=kind, tags=tag or [])
+    path = repo.resolve()
+    memories = recall_memories(path, query, limit=limit, kind=kind, tags=tag or [], verify=verify)
     if json_output:
-        typer.echo(json.dumps(memories, indent=2))
+        payload = {"plan": recall_plan(query), "memories": memories} if show_plan else memories
+        typer.echo(json.dumps(payload, indent=2))
         return
+    if show_plan:
+        typer.echo(json.dumps(recall_plan(query), indent=2))
     if not memories:
         typer.echo("No matching memories found.")
         return
     for item in memories:
         typer.echo(f"[{item['score']}] #{item['id']} {item['kind']} - {item['title']}")
         typer.echo(f"source: {item['source']} tags: {', '.join(item['tags']) or '-'}")
+        typer.echo(f"channels: {', '.join(item.get('channels', [])) or '-'}")
+        if verify:
+            typer.echo(f"verification: {item.get('verification', {}).get('status', 'unknown')}")
         typer.echo(item["content"])
         typer.echo("")
 
@@ -294,6 +311,44 @@ def forget_command(
     if not forget_memory(repo.resolve(), memory_id):
         raise typer.BadParameter(f"Memory not found: {memory_id}")
     typer.echo(f"Forgot memory #{memory_id}.")
+
+
+@app.command("context")
+def context_command(
+    query: Annotated[str, typer.Argument(help="Question or task to build a memory context pack for.")],
+    repo: Annotated[Path, typer.Option("--repo", help="Repository path for the memory store.")] = Path("."),
+    limit: Annotated[int, typer.Option("--limit", help="Maximum memories to include.")] = 6,
+) -> None:
+    typer.echo(context_pack(repo.resolve(), query, limit=limit))
+
+
+@app.command("eval")
+def eval_command(
+    path: Annotated[Path, typer.Argument(help="Repository path. Used for output location.")] = Path("."),
+    json_output: Annotated[bool, typer.Option("--json", help="Print machine-readable JSON.")] = False,
+) -> None:
+    result = run_memory_eval(path.resolve())
+    out_dir = path.resolve() / "keel-out"
+    out_dir.mkdir(exist_ok=True)
+    out_path = out_dir / "memory-eval.json"
+    out_path.write_text(json.dumps(result, indent=2), encoding="utf-8")
+    if json_output:
+        typer.echo(json.dumps(result, indent=2))
+        return
+    typer.echo(f"Keel memory eval: {result['score_percent']}%")
+    typer.echo(f"top1={result['top1']}/{result['cases']} hit@5={result['hit_at_5']}/{result['cases']} mrr={result['mrr']}")
+    typer.echo(f"Wrote {out_path}")
+
+
+@app.command("hooks")
+def hooks_command(
+    path: Annotated[Path, typer.Argument(help="Repository path.")] = Path("."),
+    client: Annotated[str, typer.Option("--client", help="codex, claude, cursor, gemini, or generic.")] = "codex",
+    write: Annotated[bool, typer.Option("--write", help="Write keel-out/hooks/<client>-hooks.json.")] = False,
+) -> None:
+    repo = path.resolve()
+    config = write_hook_config(repo, client) if write else hook_config(repo, client)
+    typer.echo(json.dumps(config, indent=2))
 
 
 @app.command()

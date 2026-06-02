@@ -12,6 +12,7 @@ from .config import load_config
 from .graph import load_graph
 from .graphify_runner import ensure_graph
 from .layers import assign_layers_and_zones
+from .memory import context_pack
 from .memory import recall as recall_memories
 from .memory import remember as remember_memory
 from .memory import remember_project_context
@@ -63,6 +64,10 @@ def memory_bootstrap(repo_path: Path | None = None) -> dict[str, Any]:
     return {"ok": True, "count": len(ids), "memory_ids": ids}
 
 
+def memory_context(query: str, limit: int = 6, repo_path: Path | None = None) -> str:
+    return context_pack(_repo(repo_path), query, limit=limit)
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="Keel MCP stdio server")
     parser.add_argument("--repo", default=os.environ.get("KEEL_REPO_PATH", "."))
@@ -104,6 +109,10 @@ def main(argv: list[str] | None = None) -> None:
     @server.tool()
     def mcp_memory_bootstrap() -> str:
         return json.dumps(memory_bootstrap(repo), indent=2)
+
+    @server.tool()
+    def mcp_memory_context(query: str, limit: int = 6) -> str:
+        return memory_context(query, limit=limit, repo_path=repo)
 
     server.run()
 

@@ -1,14 +1,18 @@
 from pathlib import Path
 
 from keel.memory import (
+    context_pack,
+    encode_memory,
     export_events_jsonl,
     forget_memory,
     list_events,
     list_memories,
     recall,
+    recall_plan,
     record_event,
     remember,
     remember_project_context,
+    verify_memory,
 )
 
 
@@ -53,3 +57,30 @@ def test_memory_bootstrap_project_context(tmp_path: Path) -> None:
 
     assert len(ids) == 3
     assert matches[0]["kind"] == "architecture"
+
+
+def test_memory_encoding_gate_plan_context_and_verify(tmp_path: Path) -> None:
+    (tmp_path / "README.md").write_text("# Demo", encoding="utf-8")
+
+    rejected = remember(tmp_path, "ok", gate=True)
+    stored = remember(
+        tmp_path,
+        "Decision: use README.md as a verified source for project summaries.",
+        kind="decision",
+        source="README.md",
+        gate=True,
+    )
+    matches = recall(tmp_path, "why use readme source?", verify=True)
+    pack = context_pack(tmp_path, "readme source")
+    encoded = encode_memory("Always run pytest after code changes.")
+    plan = recall_plan("can UI access database?")
+    verification = verify_memory(tmp_path, matches[0])
+
+    assert rejected == 0
+    assert stored > 0
+    assert matches[0]["id"] == stored
+    assert "type" in matches[0]["channels"]
+    assert "Keel Memory Context" in pack
+    assert encoded["kind"] in {"preference", "test"}
+    assert "architecture" in plan["target_kinds"]
+    assert verification["status"] == "verified"

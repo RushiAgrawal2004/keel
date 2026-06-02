@@ -37,6 +37,8 @@ layered architecture graph
   |
   +--> remember_project_context() --> durable memory store --> recall/search
   |
+  +--> eval/hooks/context --> benchmark loop + lifecycle automation
+  |
   +--> dashboard/events/export --> human and integration artifacts
 ```
 
@@ -66,6 +68,12 @@ layered architecture graph
 `Memory`
 : A durable fact, preference, decision, project summary, graph summary, or session note stored in `keel-out/keel.sqlite3`.
 
+`Encoding gate`
+: A deterministic filter that classifies memory type, tags useful facts, and rejects low-signal memories when enabled.
+
+`Context pack`
+: A markdown bundle of the most relevant verified memories for an agent task.
+
 ## Main Modules
 
 | Module | Responsibility |
@@ -84,6 +92,8 @@ layered architecture graph
 | `keel/dashboard.py` | Builds local dashboard HTML. |
 | `keel/brief.py` | Builds agent-facing architecture briefs. |
 | `keel/record.py` and `keel/memory.py` | Track sessions, actions, events, durable memories, and recall in SQLite/JSONL. |
+| `keel/evals.py` | Runs built-in memory retrieval evaluations and writes benchmark output. |
+| `keel/hooks.py` | Generates lifecycle hook configs for agent clients. |
 | `keel/serve.py` | Exposes Keel over an MCP stdio server. |
 | `keel/onboard.py` | Provides doctor, quickstart, presets, and MCP config snippets. |
 | `keel/adr.py` | Compiles ADR frontmatter into contract artifacts. |
@@ -106,16 +116,21 @@ layered architecture graph
 | `keel-out/pr-comment.md` | `keel pr-comment` | Pull request comment body. |
 | `keel-out/keel.sqlite3` | memory/event commands | Local event and durable memory database. |
 | `keel-out/keel.db` | session commands | Local session replay database. |
+| `keel-out/memory-eval.json` | `keel eval` | Built-in memory benchmark results. |
+| `keel-out/hooks/*.json` | `keel hooks --write` | Client lifecycle hook configs. |
 
 ## Memory Lifecycle
 
 1. `keel remember --from-project --repo .` imports summaries from README, architecture docs, Graphify report, and `.keel.yml`.
 2. `keel remember "fact" --kind decision --tag architecture` stores a manual memory.
-3. `keel recall "question"` ranks stored memories with deterministic keyword scoring.
-4. `keel memories` lists stored memories.
-5. `keel forget MEMORY_ID` deletes a memory.
+3. `keel recall "question" --verify --plan` plans retrieval, searches memory, reranks matches, and verifies file-backed memories against the repo.
+4. `keel context "task"` renders a compact memory context pack for an agent.
+5. `keel memories` lists stored memories.
+6. `keel forget MEMORY_ID` deletes a memory.
+7. `keel eval` runs the built-in memory retrieval benchmark and writes `keel-out/memory-eval.json`.
+8. `keel hooks --client codex --write` writes lifecycle hook config for automatic bootstrap, recall, and post-task memory capture.
 
-Memory search is intentionally deterministic in v1. A future semantic/vector search layer can sit on top of the same durable memory table.
+Memory search is deterministic in v1: SQLite FTS when available, keyword scoring, type planning, confidence weighting, recency, and repo verification. A future semantic/vector search layer can sit on top of the same durable memory table.
 
 ## Contract Lifecycle
 
@@ -174,7 +189,10 @@ keel brief .
 keel serve --repo .
 keel replay SESSION_ID .
 keel remember --from-project --repo .
-keel recall "architecture rules" --repo .
+keel recall "architecture rules" --repo . --verify --plan
+keel context "architecture rules" --repo .
+keel eval .
+keel hooks . --client codex --write
 keel events .
 keel export .
 keel export-events .
@@ -193,6 +211,7 @@ keel webhook URL .
 - `mcp_memory_search`: recalls relevant durable memories.
 - `mcp_memory_write`: stores a memory from an agent.
 - `mcp_memory_bootstrap`: imports project context into memory.
+- `mcp_memory_context`: returns a markdown memory context pack for an agent task.
 
 This makes Keel usable as a plug-and-play architecture guard for coding agents.
 
@@ -208,7 +227,7 @@ The docs workflow in `.github/workflows/docs.yml` validates `docs/index.html` on
 - Graph quality limits Keel quality; missing or noisy Graphify edges can affect proposals and checks.
 - Layer and zone assignment is path-prefix based in v1.
 - Keel is focused on project memory and architecture boundaries, not general code quality.
-- Memory recall is keyword-ranked in v1 and does not yet use embeddings.
+- Memory recall is deterministic hybrid retrieval in v1 and does not yet use embeddings or neural rerankers.
 - Reports and dashboards are generated static artifacts so the tool works locally and in CI without a hosted backend.
 
 ## Development Map

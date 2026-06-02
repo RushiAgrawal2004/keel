@@ -210,3 +210,32 @@
 - `python -m build` created the `keel_arch-0.1.0` sdist and wheel.
 - `python -m twine check dist/*` passed.
 - Refreshed Graphify after memory-engine changes: `468 nodes`, `1490 edges`, `32 communities`.
+
+## 2026-06-02 - Cognition Engine V1
+
+### Request
+- Build all major pieces needed for a benchmark-destroying memory/graph/coding-agent engine and explain what was built.
+
+### Changes
+- Upgraded memory storage with typed memory classification and encoding metadata.
+- Added an optional encoding gate via `keel remember --gate` to reject low-signal memories.
+- Added retrieval planning via `recall_plan()` and `keel recall --plan`.
+- Added hybrid deterministic retrieval:
+  - SQLite FTS5 when available.
+  - keyword scoring across title, tags, source, and content.
+  - memory-type targeting.
+  - confidence weighting from encoding metadata.
+- Added repo verification via `keel recall --verify`, including source-file and path existence checks.
+- Added context pack generation via `keel context`.
+- Added `keel/evals.py` and `keel eval` with a built-in memory benchmark that reports top-1, hit@5, MRR, and score percentage.
+- Added `keel/hooks.py` and `keel hooks --client codex|claude|cursor|gemini|generic --write` to generate lifecycle hook configs for agent memory bootstrap, pre-task recall, and post-task capture.
+- Added MCP memory context support through `mcp_memory_context`.
+- Added tests for the encoding gate, retrieval planning, context packs, repo verification, eval command, hook config generation, and MCP memory context helper.
+
+### Verification
+- Targeted memory/CLI/MCP tests passed: `20 passed`.
+- Full test suite passed: `30 passed`.
+- `python -m build` created the `keel_arch-0.1.0` sdist and wheel with new modules included.
+- `python -m twine check dist/*` passed.
+- `python -m keel.cli eval . --json` produced `score_percent: 93.0`, `top1: 9/10`, `hit_at_5: 10/10`, `mrr: 0.95`.
+- Refreshed Graphify after cognition-engine changes: `495 nodes`, `1611 edges`, `30 communities`.

@@ -24,11 +24,16 @@ For the internal design, see [ARCHITECTURE.md](ARCHITECTURE.md).
 ```bash
 keel remember --from-project --repo .
 keel remember "Always update buildkeelupdates.md after Keel changes." --kind preference --tag agent
-keel recall "how do I run tests?" --repo .
+keel recall "how do I run tests?" --repo . --verify --plan
+keel context "debug the dashboard" --repo .
 keel memories --repo .
+keel eval .
+keel hooks . --client codex --write
 ```
 
 Keel stores durable memory in `keel-out/keel.sqlite3`. Memories can be project summaries, architecture notes, user preferences, decisions, session facts, or any other context an agent should remember across runs.
+
+The memory engine includes a deterministic encoding gate, typed memory classification, SQLite FTS-backed retrieval when available, query planning, reranking signals, repo verification, context-pack rendering, lifecycle hook configs, and a built-in memory eval suite.
 
 ## Commands
 
@@ -43,6 +48,9 @@ keel brief .
 keel replay SESSION_ID .
 keel remember "Run tests with python -m pytest." --kind project
 keel recall "tests"
+keel context "architecture boundaries"
+keel eval .
+keel hooks . --client codex --write
 keel events .
 keel export-events .
 keel export . --format json
@@ -91,6 +99,7 @@ keel serve
 - `memory_search`
 - `memory_write`
 - `memory_bootstrap`
+- `memory_context`
 
 Set `KEEL_REPO_PATH` or pass `--repo` to point the server at a target repo.
 
