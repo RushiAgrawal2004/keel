@@ -16,6 +16,7 @@ from .memory import context_pack
 from .memory import recall as recall_memories
 from .memory import remember as remember_memory
 from .memory import remember_project_context
+from .manager import sync_project
 from .record import get_session, log_action, start_session
 from .report import render_replay
 
@@ -68,6 +69,10 @@ def memory_context(query: str, limit: int = 6, repo_path: Path | None = None) ->
     return context_pack(_repo(repo_path), query, limit=limit)
 
 
+def project_sync(update_graph: bool = True, repo_path: Path | None = None) -> dict[str, Any]:
+    return sync_project(_repo(repo_path), update_graph=update_graph)
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="Keel MCP stdio server")
     parser.add_argument("--repo", default=os.environ.get("KEEL_REPO_PATH", "."))
@@ -113,6 +118,10 @@ def main(argv: list[str] | None = None) -> None:
     @server.tool()
     def mcp_memory_context(query: str, limit: int = 6) -> str:
         return memory_context(query, limit=limit, repo_path=repo)
+
+    @server.tool()
+    def mcp_project_sync(update_graph: bool = True) -> str:
+        return json.dumps(project_sync(update_graph=update_graph, repo_path=repo), indent=2)
 
     server.run()
 

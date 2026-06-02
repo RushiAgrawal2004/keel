@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 
 
-SUPPORTED_CLIENTS = {"codex", "claude", "cursor", "gemini", "generic"}
+SUPPORTED_CLIENTS = {"codex", "claude", "claude-code", "cursor", "gemini", "generic"}
 
 
 def hook_config(repo_path: Path, client: str = "codex") -> dict[str, Any]:
@@ -19,8 +19,8 @@ def hook_config(repo_path: Path, client: str = "codex") -> dict[str, Any]:
         "purpose": "Lifecycle hooks for automatic Keel memory capture and recall.",
         "hooks": {
             "session_start": {
-                "description": "Bootstrap project memory at the start of an agent session.",
-                "command": ["keel", "remember", "--from-project", "--repo", repo],
+                "description": "Sync project memory and graph at the start of an agent session.",
+                "command": ["keel", "sync", repo],
             },
             "before_task": {
                 "description": "Fetch a memory context pack before coding.",
@@ -45,7 +45,14 @@ def hook_config(repo_path: Path, client: str = "codex") -> dict[str, Any]:
         "mcp": {
             "command": "keel",
             "args": ["serve", "--repo", repo],
-            "tools": ["mcp_memory_search", "mcp_memory_write", "mcp_memory_bootstrap", "mcp_check_change"],
+            "tools": [
+                "mcp_memory_search",
+                "mcp_memory_write",
+                "mcp_memory_bootstrap",
+                "mcp_memory_context",
+                "mcp_project_sync",
+                "mcp_check_change",
+            ],
         },
     }
 

@@ -24,8 +24,10 @@ For the internal design, see [ARCHITECTURE.md](ARCHITECTURE.md) and [MEMORY_ARCH
 ```bash
 keel remember --from-project --repo .
 keel remember "Always update buildkeelupdates.md after Keel changes." --kind preference --tag agent
+keel sync .
 keel recall "how do I run tests?" --repo . --verify --plan
 keel context "debug the dashboard" --repo .
+keel agent-setup . --client claude-code --write
 keel memory-architecture . --write
 keel memories --repo .
 keel eval .
@@ -48,8 +50,10 @@ keel build .
 keel brief .
 keel replay SESSION_ID .
 keel remember "Run tests with python -m pytest." --kind project
+keel sync .
 keel recall "tests"
 keel context "architecture boundaries"
+keel agent-setup . --client claude-code --write
 keel memory-architecture .
 keel eval .
 keel hooks . --client codex --write
@@ -102,8 +106,23 @@ keel serve
 - `memory_write`
 - `memory_bootstrap`
 - `memory_context`
+- `project_sync`
 
 Set `KEEL_REPO_PATH` or pass `--repo` to point the server at a target repo.
+
+## Claude Code / Agent Manager Setup
+
+```bash
+keel agent-setup . --client claude-code --write
+keel serve --repo .
+```
+
+This writes MCP setup and Keel manager instructions under `keel-out/agent-setup/`. The intended lifecycle is:
+
+- session start: `keel sync .`
+- before task: `keel context "<task>"`
+- after task: `keel remember "<summary>" --kind session --tag agent --gate`
+- finish: run tests, `keel check .`, and `keel eval .`
 
 ## Plug-And-Play Setup
 

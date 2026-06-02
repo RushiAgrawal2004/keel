@@ -192,9 +192,11 @@ Agent and integration commands:
 keel brief .
 keel serve --repo .
 keel replay SESSION_ID .
+keel sync .
 keel remember --from-project --repo .
 keel recall "architecture rules" --repo . --verify --plan
 keel context "architecture rules" --repo .
+keel agent-setup . --client claude-code --write
 keel memory-architecture . --write
 keel eval .
 keel hooks . --client codex --write
@@ -217,6 +219,7 @@ keel webhook URL .
 - `mcp_memory_write`: stores a memory from an agent.
 - `mcp_memory_bootstrap`: imports project context into memory.
 - `mcp_memory_context`: returns a markdown memory context pack for an agent task.
+- `mcp_project_sync`: bootstraps memory, refreshes the graph when available, and records a project sync event.
 
 This makes Keel usable as a plug-and-play architecture guard for coding agents.
 

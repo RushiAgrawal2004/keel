@@ -34,6 +34,9 @@ from .memory_architecture import memory_architecture as memory_architecture_spec
 from .memory_architecture import render_memory_architecture, write_memory_architecture
 from .evals import run_memory_eval
 from .hooks import hook_config, write_hook_config
+from .agent_setup import agent_setup as build_agent_setup
+from .agent_setup import write_agent_setup
+from .manager import sync_project
 from .onboard import doctor as run_doctor
 from .onboard import mcp_config, pretty_json, quickstart as run_quickstart
 from .onboard import write_preset_config
@@ -322,6 +325,43 @@ def context_command(
     limit: Annotated[int, typer.Option("--limit", help="Maximum memories to include.")] = 6,
 ) -> None:
     typer.echo(context_pack(repo.resolve(), query, limit=limit))
+
+
+@app.command("sync")
+def sync_command(
+    path: Annotated[Path, typer.Argument(help="Repository path to sync.")] = Path("."),
+    no_graph: Annotated[bool, typer.Option("--no-graph", help="Only bootstrap memory; do not run Graphify update.")] = False,
+    json_output: Annotated[bool, typer.Option("--json", help="Print machine-readable JSON.")] = False,
+) -> None:
+    result = sync_project(path.resolve(), update_graph=not no_graph)
+    if json_output:
+        typer.echo(json.dumps(result, indent=2))
+        return
+    typer.echo(f"Keel synced {result['repo']}")
+    typer.echo(f"Stored {result['memory_count']} memory item(s).")
+    if result["graph_path"]:
+        typer.echo(f"Graph updated: {result['graph_path']}")
+    if result["graph_error"]:
+        typer.echo(f"Graph update skipped/failed: {result['graph_error']}")
+
+
+@app.command("agent-setup")
+def agent_setup_command(
+    path: Annotated[Path, typer.Argument(help="Repository path.")] = Path("."),
+    client: Annotated[str, typer.Option("--client", help="claude-code, codex, cursor, gemini, or generic.")] = "claude-code",
+    write: Annotated[bool, typer.Option("--write", help="Write setup files under keel-out/agent-setup.")] = False,
+    json_output: Annotated[bool, typer.Option("--json", help="Print machine-readable JSON.")] = False,
+) -> None:
+    repo = path.resolve()
+    setup = write_agent_setup(repo, client) if write else build_agent_setup(repo, client)
+    if json_output:
+        typer.echo(json.dumps(setup, indent=2))
+        return
+    if write:
+        typer.echo(f"Wrote {setup['setup_path']}")
+        typer.echo(f"Wrote {setup['instructions_path']}")
+        return
+    typer.echo(setup["manager_instructions"])
 
 
 @app.command("memory-architecture")

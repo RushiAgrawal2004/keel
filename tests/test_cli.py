@@ -194,6 +194,22 @@ def test_cli_memory_context_eval_and_hooks(tmp_path: Path) -> None:
     assert '"principles"' in architecture_json.stdout
 
 
+def test_cli_agent_setup_and_sync(tmp_path: Path) -> None:
+    (tmp_path / "README.md").write_text("# Demo\n\nKeel manages project memory.", encoding="utf-8")
+    runner = CliRunner()
+
+    sync = runner.invoke(app, ["sync", str(tmp_path), "--no-graph", "--json"])
+    setup = runner.invoke(app, ["agent-setup", str(tmp_path), "--client", "claude-code", "--write", "--json"])
+
+    assert sync.exit_code == 0
+    assert '"memory_count": 1' in sync.stdout
+    assert setup.exit_code == 0
+    assert '"mcpServers"' in setup.stdout
+    assert "mcp_project_sync" in setup.stdout
+    assert (tmp_path / "keel-out" / "agent-setup" / "claude-code.json").exists()
+    assert (tmp_path / "keel-out" / "agent-setup" / "claude-code-KEEL.md").exists()
+
+
 def _copy_project(tmp_path: Path, fixtures: Path, graph_name: str) -> None:
     (tmp_path / ".keel.yml").write_text((fixtures / "sample.keel.yml").read_text(encoding="utf-8"), encoding="utf-8")
     graph_dir = tmp_path / "graphify-out"

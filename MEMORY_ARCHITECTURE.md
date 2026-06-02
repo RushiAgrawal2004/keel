@@ -36,9 +36,12 @@ That makes Keel a project cognition layer:
 ## Memory Pipeline
 
 ```text
-capture
+agent starts / task begins / task ends
+  -> keel sync or MCP project_sync
+  -> capture
   -> encoding gate
   -> typed durable store
+  -> graph refresh
   -> retrieval planner
   -> hybrid retrieval
   -> verification
@@ -52,15 +55,46 @@ capture
 
 Capture sources:
 
+- project manager sync: `keel sync`
 - manual CLI memory: `keel remember`
 - project bootstrap: `keel remember --from-project`
 - MCP writes: `mcp_memory_write`
+- MCP sync: `mcp_project_sync`
 - lifecycle hooks: `keel hooks`
 - Graphify summaries: `graphify-out/GRAPH_REPORT.md`
 - architecture/config files: `ARCHITECTURE.md`, `.keel.yml`
 - agent session facts: `keel record`, `mcp_record_action`
 
 The capture layer should eventually support automatic conversation capture from supported clients, but the current implementation already supports the command and MCP paths.
+
+## Project Manager Loop
+
+Keel is meant to run beside Claude Code, Codex, Cursor, Gemini, or another coding agent as the project manager.
+
+```text
+session_start
+  -> keel sync .
+  -> memory bootstrap
+  -> Graphify update when available
+  -> project_synced event
+
+before_task
+  -> keel context "<task>"
+  -> agent receives verified memories and warnings
+
+agent_edits
+  -> agent reads files and changes code
+  -> tests / keel check validate the work
+
+after_task
+  -> keel remember "<summary>" --kind session --tag agent --gate
+  -> new memory and event stored in SQLite
+
+next_session
+  -> previous context is available through recall/context
+```
+
+Keel does not directly control Claude Code or Codex. The client must call Keel through CLI hooks or MCP tools. Keel owns memory, graph sync, event logs, verification, and context packaging.
 
 ## Layer 2: Encoding Gate
 
@@ -258,6 +292,7 @@ Current MCP memory tools:
 - `mcp_memory_write`
 - `mcp_memory_bootstrap`
 - `mcp_memory_context`
+- `mcp_project_sync`
 
 These sit beside architecture tools like:
 
@@ -280,6 +315,7 @@ The next serious upgrades are:
 - git-aware recall from commits and CI failures
 - cross-repo identity memory
 - user-scoped memory separate from repo-scoped memory
+- real client hook installers for Claude Code and Codex when their hook formats are stable
 
 ## Target End State
 

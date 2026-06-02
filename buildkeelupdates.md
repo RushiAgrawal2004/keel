@@ -262,3 +262,35 @@
 - `python -m build` created the `keel_arch-0.1.0` sdist and wheel with `keel/memory_architecture.py` included.
 - `python -m twine check dist/*` passed.
 - Refreshed Graphify after memory architecture changes: `503 nodes`, `1659 edges`, `29 communities`.
+
+## 2026-06-02 - Agent Project Manager Loop
+
+### Request
+- Make Keel connect to Claude Code through CLI/MCP setup and act like a project manager that keeps recording context and rebuilding the graph as the project proceeds.
+
+### Changes
+- Added `keel/manager.py` with `sync_project()`:
+  - bootstraps project memory
+  - optionally runs Graphify update
+  - records a `project_synced` event in SQLite
+- Added `keel/agent_setup.py`:
+  - generates Claude Code/Codex/Cursor/Gemini/generic agent setup payloads
+  - includes MCP config, lifecycle hook config, and manager instructions
+- Added CLI commands:
+  - `keel sync`
+  - `keel agent-setup`
+- Added MCP helper/tool:
+  - `mcp_project_sync`
+- Updated generated hook configs so session start uses `keel sync`.
+- Updated README, architecture docs, and memory architecture docs with the project manager lifecycle.
+- Added tests for CLI sync, Claude Code setup output, and MCP project sync helper.
+
+### Verification
+- Targeted CLI/MCP tests passed: `2 passed`.
+- `python -m keel.cli agent-setup . --client claude-code --json` printed MCP config, hooks, and manager instructions.
+- `python -m keel.cli sync . --no-graph --json` bootstrapped project memory and recorded a sync event.
+- Full test suite passed: `31 passed`.
+- `python -m build` created the `keel_arch-0.1.0` sdist and wheel with `keel/agent_setup.py` and `keel/manager.py` included.
+- `python -m twine check dist/*` passed.
+- First Graphify refresh attempt hit a temporary Gemini 503 high-demand error; retry succeeded.
+- Refreshed Graphify after project-manager changes: `521 nodes`, `1719 edges`, `30 communities`.
