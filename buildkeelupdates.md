@@ -239,3 +239,26 @@
 - `python -m twine check dist/*` passed.
 - `python -m keel.cli eval . --json` produced `score_percent: 93.0`, `top1: 9/10`, `hit_at_5: 10/10`, `mrr: 0.95`.
 - Refreshed Graphify after cognition-engine changes: `495 nodes`, `1611 edges`, `30 communities`.
+
+## 2026-06-02 - Industry Memory Architecture
+
+### Request
+- Add a very good industry-level memory architecture to Keel.
+
+### Changes
+- Added `MEMORY_ARCHITECTURE.md` as a dedicated architecture specification for Keel's agent memory system.
+- Added `keel/memory_architecture.py` with a structured blueprint for principles, layers, memory types, quality controls, and future layers.
+- Added `keel memory-architecture` CLI command:
+  - Prints the architecture blueprint as Markdown.
+  - Supports `--json` for machine-readable output.
+  - Supports `--write` to generate `keel-out/memory-architecture.md`.
+- Linked the memory architecture from `README.md` and `ARCHITECTURE.md`.
+- Extended CLI tests to cover the memory architecture command and output artifact.
+
+### Verification
+- `python -m pytest` passed with 30 tests.
+- `python -m keel.cli memory-architecture . --json` printed the structured blueprint.
+- `python -m keel.cli memory-architecture . --write` generated `keel-out/memory-architecture.md`.
+- `python -m build` created the `keel_arch-0.1.0` sdist and wheel with `keel/memory_architecture.py` included.
+- `python -m twine check dist/*` passed.
+- Refreshed Graphify after memory architecture changes: `503 nodes`, `1659 edges`, `29 communities`.

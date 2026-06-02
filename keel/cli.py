@@ -30,6 +30,8 @@ from .memory import (
     remember as remember_memory,
     remember_project_context,
 )
+from .memory_architecture import memory_architecture as memory_architecture_spec
+from .memory_architecture import render_memory_architecture, write_memory_architecture
 from .evals import run_memory_eval
 from .hooks import hook_config, write_hook_config
 from .onboard import doctor as run_doctor
@@ -320,6 +322,23 @@ def context_command(
     limit: Annotated[int, typer.Option("--limit", help="Maximum memories to include.")] = 6,
 ) -> None:
     typer.echo(context_pack(repo.resolve(), query, limit=limit))
+
+
+@app.command("memory-architecture")
+def memory_architecture_command(
+    path: Annotated[Path, typer.Argument(help="Repository path. Used when writing output.")] = Path("."),
+    write: Annotated[bool, typer.Option("--write", help="Write keel-out/memory-architecture.md.")] = False,
+    json_output: Annotated[bool, typer.Option("--json", help="Print machine-readable JSON.")] = False,
+) -> None:
+    repo = path.resolve()
+    if json_output:
+        typer.echo(json.dumps(memory_architecture_spec(), indent=2))
+        return
+    if write:
+        out = write_memory_architecture(repo)
+        typer.echo(f"Wrote {out}")
+        return
+    typer.echo(render_memory_architecture())
 
 
 @app.command("eval")

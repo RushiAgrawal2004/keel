@@ -17,7 +17,7 @@ keel check .
 
 Keel reads `graphify-out/graph.json`, proposes deterministic architecture contracts from the graph, and enforces only contracts a human approved in `.keel.yml`.
 
-For the internal design, see [ARCHITECTURE.md](ARCHITECTURE.md).
+For the internal design, see [ARCHITECTURE.md](ARCHITECTURE.md) and [MEMORY_ARCHITECTURE.md](MEMORY_ARCHITECTURE.md).
 
 ## Agent Memory
 
@@ -26,6 +26,7 @@ keel remember --from-project --repo .
 keel remember "Always update buildkeelupdates.md after Keel changes." --kind preference --tag agent
 keel recall "how do I run tests?" --repo . --verify --plan
 keel context "debug the dashboard" --repo .
+keel memory-architecture . --write
 keel memories --repo .
 keel eval .
 keel hooks . --client codex --write
@@ -49,6 +50,7 @@ keel replay SESSION_ID .
 keel remember "Run tests with python -m pytest." --kind project
 keel recall "tests"
 keel context "architecture boundaries"
+keel memory-architecture .
 keel eval .
 keel hooks . --client codex --write
 keel events .

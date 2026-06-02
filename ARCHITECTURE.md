@@ -4,6 +4,8 @@ Keel is a local-first memory engine and architecture governance tool for coding 
 
 The installed package name is `keel-arch`; the command users run is `keel`.
 
+For the dedicated memory system design, see [MEMORY_ARCHITECTURE.md](MEMORY_ARCHITECTURE.md).
+
 ## Goals
 
 - Make architecture rules executable without requiring users to manually model their whole codebase.
@@ -92,6 +94,7 @@ layered architecture graph
 | `keel/dashboard.py` | Builds local dashboard HTML. |
 | `keel/brief.py` | Builds agent-facing architecture briefs. |
 | `keel/record.py` and `keel/memory.py` | Track sessions, actions, events, durable memories, and recall in SQLite/JSONL. |
+| `keel/memory_architecture.py` | Exposes the memory architecture blueprint as Markdown and JSON. |
 | `keel/evals.py` | Runs built-in memory retrieval evaluations and writes benchmark output. |
 | `keel/hooks.py` | Generates lifecycle hook configs for agent clients. |
 | `keel/serve.py` | Exposes Keel over an MCP stdio server. |
@@ -117,6 +120,7 @@ layered architecture graph
 | `keel-out/keel.sqlite3` | memory/event commands | Local event and durable memory database. |
 | `keel-out/keel.db` | session commands | Local session replay database. |
 | `keel-out/memory-eval.json` | `keel eval` | Built-in memory benchmark results. |
+| `keel-out/memory-architecture.md` | `keel memory-architecture --write` | Generated memory architecture blueprint. |
 | `keel-out/hooks/*.json` | `keel hooks --write` | Client lifecycle hook configs. |
 
 ## Memory Lifecycle
@@ -191,6 +195,7 @@ keel replay SESSION_ID .
 keel remember --from-project --repo .
 keel recall "architecture rules" --repo . --verify --plan
 keel context "architecture rules" --repo .
+keel memory-architecture . --write
 keel eval .
 keel hooks . --client codex --write
 keel events .

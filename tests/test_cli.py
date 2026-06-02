@@ -177,6 +177,8 @@ def test_cli_memory_context_eval_and_hooks(tmp_path: Path) -> None:
     context = runner.invoke(app, ["context", "how to test", "--repo", str(tmp_path)])
     evaluation = runner.invoke(app, ["eval", str(tmp_path), "--json"])
     hooks = runner.invoke(app, ["hooks", str(tmp_path), "--client", "codex", "--write"])
+    architecture = runner.invoke(app, ["memory-architecture", str(tmp_path), "--write"])
+    architecture_json = runner.invoke(app, ["memory-architecture", str(tmp_path), "--json"])
 
     assert context.exit_code == 0
     assert "Keel Memory Context" in context.stdout
@@ -186,6 +188,10 @@ def test_cli_memory_context_eval_and_hooks(tmp_path: Path) -> None:
     assert hooks.exit_code == 0
     assert "session_start" in hooks.stdout
     assert (tmp_path / "keel-out" / "hooks" / "codex-hooks.json").exists()
+    assert architecture.exit_code == 0
+    assert (tmp_path / "keel-out" / "memory-architecture.md").exists()
+    assert architecture_json.exit_code == 0
+    assert '"principles"' in architecture_json.stdout
 
 
 def _copy_project(tmp_path: Path, fixtures: Path, graph_name: str) -> None:
