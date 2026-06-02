@@ -1,263 +1,471 @@
 # Keel Architecture
 
-Keel is a local-first memory engine and architecture governance tool for coding agents. It stores durable project memory for Codex, Claude, and other MCP-compatible agents, reads a Graphify knowledge graph for a repository, maps code nodes into configured layers and zones, proposes architecture contracts, and enforces only the contracts a human has approved.
+Keel is a local-first project memory engine for coding agents.
 
-The installed package name is `keel-arch`; the command users run is `keel`.
-
-For the dedicated memory system design, see [MEMORY_ARCHITECTURE.md](MEMORY_ARCHITECTURE.md).
-
-## Goals
-
-- Make architecture rules executable without requiring users to manually model their whole codebase.
-- Give coding agents durable recall across sessions and tools.
-- Keep humans in control by separating discovered proposals from approved contracts.
-- Support agent workflows through CLI output, JSON artifacts, reports, and an MCP server.
-- Stay plug-and-play for a target repository: install, initialize, build, brief, check.
-
-## System Flow
+The goal is not to clone generic agent memory. Keel's sharper target is:
 
 ```text
-target repo
-  |
-  | graphify . or keel build .
-  v
-graphify-out/graph.json
-  |
-  | load_graph()
-  v
-KeelGraph
-  |
-  | assign_layers_and_zones(.keel.yml)
-  v
-layered architecture graph
-  |
-  +--> discover_contracts() --> keel-out/proposals.yml --> approve/reject
-  |
-  +--> check_repo_result() --> CLI/JSON/HTML/PR comment/CI status
-  |
-  +--> make_brief() / MCP tools --> agent guidance
-  |
-  +--> remember_project_context() --> durable memory store --> recall/search
-  |
-  +--> eval/hooks/context --> benchmark loop + lifecycle automation
-  |
-  +--> dashboard/events/export --> human and integration artifacts
+agent memory + Graphify project graph + evidence + contradiction detection
 ```
 
-## Core Concepts
+Keel should help Codex, Claude, Cursor, Gemini, and other MCP-compatible agents remember what is still true about a software project.
 
-`Graphify graph`
-: Source of truth for discovered nodes and edges. Keel expects `graphify-out/graph.json` by default.
+## Product Thesis
 
-`KeelGraph`
-: Internal normalized graph containing code nodes, code connections, and external imports.
+Generic agent memory remembers sessions.
 
-`Layer`
-: A coarse architecture bucket such as `UI`, `SERVICE`, `DATABASE`, or `TEST`. Layers are assigned from path prefixes in `.keel.yml`.
+Keel remembers the project as a living engineering system:
 
-`Zone`
-: An ownership or domain boundary, also assigned from path prefixes in `.keel.yml`.
+- what commands were run
+- what failed
+- what passed
+- what files changed
+- what the user corrected
+- what the Graphify project graph says
+- what facts became stale or contradicted
+- what context the next agent should receive
 
-`Proposal`
-: A contract Keel thinks may be true based on graph structure. Proposals are not enforced until approved.
+## Design Principles
 
-`Approved contract`
-: A human-approved architecture invariant stored in `.keel.yml`.
+1. Evidence first.
+   Every important memory must point back to a command, file, graph node, git state, user note, or session event.
 
-`Violation`
-: A concrete graph edge, package import, zone access, or layer cycle that breaks an approved contract.
+2. Graphify first.
+   The project graph is not an optional decoration. It is the structural memory layer that links facts to files, modules, functions, docs, and communities.
 
-`Memory`
-: A durable fact, preference, decision, project summary, graph summary, or session note stored in `keel-out/keel.sqlite3`.
+3. Safe context.
+   Agents should receive confidence-ranked context, not random remembered text.
 
-`Encoding gate`
-: A deterministic filter that classifies memory type, tags useful facts, and rejects low-signal memories when enabled.
+4. Local first.
+   SQLite and local files are the default. External APIs are optional and explicit.
 
-`Context pack`
-: A markdown bundle of the most relevant verified memories for an agent task.
+5. Contradictions are product value.
+   If README says `npm test` but blackbox evidence says the project has no test script, Keel should say so.
 
-## Main Modules
+6. Narrow surface.
+   Keel exposes graph, memory, blackbox, and MCP. It avoids unrelated dashboards, rule engines, and noisy features until the core works.
 
-| Module | Responsibility |
-| --- | --- |
-| `keel/cli.py` | Typer CLI commands and command orchestration. |
-| `keel/graphify_runner.py` | Locates or invokes Graphify and returns the graph path. |
-| `keel/graph.py` | Converts Graphify JSON into `KeelGraph`. |
-| `keel/layers.py` | Assigns nodes to layers and zones from config path prefixes. |
-| `keel/config.py` | Loads, validates, and writes `.keel.yml`. |
-| `keel/discover.py` | Mines candidate contracts from graph structure. |
-| `keel/contracts.py` | Stores proposals and moves approved contracts into config. |
-| `keel/check.py` | Evaluates approved contracts and baselines known debt. |
-| `keel/rules.py` | Supports simpler legacy/manual rule checks. |
-| `keel/repair.py` | Generates repair hints for violations. |
-| `keel/report.py` | Renders CLI, HTML, explain, and replay output. |
-| `keel/dashboard.py` | Builds local dashboard HTML. |
-| `keel/brief.py` | Builds agent-facing architecture briefs. |
-| `keel/record.py` and `keel/memory.py` | Track sessions, actions, events, durable memories, and recall in SQLite/JSONL. |
-| `keel/memory_architecture.py` | Exposes the memory architecture blueprint as Markdown and JSON. |
-| `keel/evals.py` | Runs built-in memory retrieval evaluations and writes benchmark output. |
-| `keel/hooks.py` | Generates lifecycle hook configs for agent clients. |
-| `keel/serve.py` | Exposes Keel over an MCP stdio server. |
-| `keel/onboard.py` | Provides doctor, quickstart, presets, and MCP config snippets. |
-| `keel/adr.py` | Compiles ADR frontmatter into contract artifacts. |
-| `keel/pr_comment.py` | Writes pull request summary markdown. |
-| `keel/webhook.py` | Sends governance export payloads to webhooks. |
-| `keel/graph_quality.py` | Scores graph usefulness and warns about weak input graphs. |
-
-## Data And Artifacts
-
-| Path | Producer | Purpose |
-| --- | --- | --- |
-| `.keel.yml` | `keel init`, `keel approve`, or manual edit | Project config, layer/zone mapping, approved contracts. |
-| `graphify-out/graph.json` | Graphify or `keel build` via Graphify | Raw knowledge graph input. |
-| `graphify-out/GRAPH_REPORT.md` | Graphify | Human-readable graph analysis. |
-| `keel-out/keel-graph.json` | `keel build` | Layered Keel graph snapshot. |
-| `keel-out/proposals.yml` | `keel discover --write` | Candidate contracts awaiting approval. |
-| `keel-out/baseline.yml` | `keel baseline` | Hashes of accepted existing violations. |
-| `keel-out/check-report.html` | `keel check --html` | Human-readable check report. |
-| `keel-out/dashboard.html` | `keel dashboard` | Local dashboard. |
-| `keel-out/pr-comment.md` | `keel pr-comment` | Pull request comment body. |
-| `keel-out/keel.sqlite3` | memory/event commands | Local event and durable memory database. |
-| `keel-out/keel.db` | session commands | Local session replay database. |
-| `keel-out/memory-eval.json` | `keel eval` | Built-in memory benchmark results. |
-| `keel-out/memory-architecture.md` | `keel memory-architecture --write` | Generated memory architecture blueprint. |
-| `keel-out/hooks/*.json` | `keel hooks --write` | Client lifecycle hook configs. |
-
-## Memory Lifecycle
-
-1. `keel remember --from-project --repo .` imports summaries from README, architecture docs, Graphify report, and `.keel.yml`.
-2. `keel remember "fact" --kind decision --tag architecture` stores a manual memory.
-3. `keel recall "question" --verify --plan` plans retrieval, searches memory, reranks matches, and verifies file-backed memories against the repo.
-4. `keel context "task"` renders a compact memory context pack for an agent.
-5. `keel memories` lists stored memories.
-6. `keel forget MEMORY_ID` deletes a memory.
-7. `keel eval` runs the built-in memory retrieval benchmark and writes `keel-out/memory-eval.json`.
-8. `keel hooks --client codex --write` writes lifecycle hook config for automatic bootstrap, recall, and post-task memory capture.
-
-Memory search is deterministic in v1: SQLite FTS when available, keyword scoring, type planning, confidence weighting, recency, and repo verification. A future semantic/vector search layer can sit on top of the same durable memory table.
-
-## Contract Lifecycle
-
-1. `keel init .` creates `.keel.yml`.
-2. `graphify .` or `keel build .` ensures `graphify-out/graph.json` exists.
-3. `keel discover . --write` mines candidate rules and writes `keel-out/proposals.yml`.
-4. `keel proposals .` lists candidates.
-5. `keel approve CONTRACT_ID .` moves a chosen contract into `.keel.yml`.
-6. `keel check .` enforces approved contracts.
-7. `keel baseline .` can mark existing known violations as accepted debt.
-
-## Enforced Rule Types
-
-- `forbid_edge`: forbids direct edges from one layer to another.
-- `allow_only_path`: requires a source layer to reach a target layer through an approved route.
-- `external_package_scope`: restricts a dependency package to allowed layers or zones.
-- `zone_ownership`: restricts access into a zone to allowed owners.
-- `no_cycles_between_layers`: prevents cycles in the configured layer graph.
-
-## CLI Surfaces
-
-Setup and onboarding:
-
-```bash
-keel init .
-keel doctor .
-keel quickstart .
-keel mcp-config . --client codex
-```
-
-Graph and discovery:
-
-```bash
-keel build .
-keel discover . --write
-keel proposals .
-keel approve CONTRACT_ID .
-keel reject CONTRACT_ID .
-```
-
-Enforcement and reports:
-
-```bash
-keel check . --json --html
-keel baseline .
-keel explain CONTRACT_ID .
-keel graph-quality .
-keel dashboard .
-keel pr-comment .
-```
-
-Agent and integration commands:
-
-```bash
-keel brief .
-keel serve --repo .
-keel replay SESSION_ID .
-keel sync .
-keel remember --from-project --repo .
-keel recall "architecture rules" --repo . --verify --plan
-keel context "architecture rules" --repo .
-keel agent-setup . --client claude-code --write
-keel memory-architecture . --write
-keel eval .
-keel hooks . --client codex --write
-keel events .
-keel export .
-keel export-events .
-keel adr-compile . --write
-keel webhook URL .
-```
-
-## MCP Architecture
-
-`keel serve --repo PATH` starts a stdio MCP server backed by the selected repository. It exposes:
-
-- `mcp_get_brief`: returns the current architecture brief.
-- `mcp_check_change`: checks a list of changed files for violations.
-- `mcp_record_action`: records agent actions into the local replay log.
-- `mcp_get_replay`: returns a rendered session replay.
-- `mcp_memory_search`: recalls relevant durable memories.
-- `mcp_memory_write`: stores a memory from an agent.
-- `mcp_memory_bootstrap`: imports project context into memory.
-- `mcp_memory_context`: returns a markdown memory context pack for an agent task.
-- `mcp_project_sync`: bootstraps memory, refreshes the graph when available, and records a project sync event.
-- `mcp_project_status`: returns memory, sync, and graph health for the repo.
-- `mcp_graph_status`: returns Graphify provider, graph path, node count, and edge count.
-
-This makes Keel usable as a plug-and-play architecture guard for coding agents.
-
-## CI Architecture
-
-The GitHub Actions workflow in `.github/workflows/keel.yml` installs the package in editable mode, runs tests, and runs `keel check . --json --html` when `graphify-out/graph.json` exists. It also generates a PR comment body, dashboard, and uploaded report artifacts.
-
-The docs workflow in `.github/workflows/docs.yml` validates `docs/index.html` on push. GitHub Pages deployment is manual through `workflow_dispatch` so normal pushes do not fail when Pages is not configured.
-
-## Design Constraints
-
-- Keel does not enforce unapproved proposals.
-- Graph quality limits Keel quality; missing or noisy Graphify edges can affect proposals and checks.
-- Layer and zone assignment is path-prefix based in v1.
-- Keel is focused on project memory and architecture boundaries, not general code quality.
-- Memory recall is deterministic hybrid retrieval in v1 and does not yet use embeddings or neural rerankers.
-- Reports and dashboards are generated static artifacts so the tool works locally and in CI without a hosted backend.
-
-## Development Map
+## High-Level Flow
 
 ```text
-keel/
-  cli.py              command entrypoint
-  models.py           shared dataclasses
-  config.py           .keel.yml parsing and validation
-  graph.py            Graphify JSON adapter
-  layers.py           layer and zone assignment
-  discover.py         contract mining
-  check.py            contract enforcement
-  report.py           text and HTML rendering
-  serve.py            MCP server
-  onboard.py          plug-and-play onboarding
-tests/
-  test_*.py           behavior and CLI coverage
-demo-app/
-  src/                sample app used to demonstrate boundaries
-docs/
-  index.html          static documentation site
+Agent / User / CLI / MCP
+        |
+        v
+Observation Layer
+  - commands
+  - tool calls
+  - file edits
+  - test output
+  - user corrections
+  - Graphify graph updates
+        |
+        v
+Evidence Store
+  - raw events
+  - command outputs
+  - git snapshots
+  - graph snapshots
+        |
+        v
+Memory Compiler
+  - dedup
+  - classify
+  - summarize
+  - extract facts
+  - link to Graphify nodes
+  - detect contradiction/staleness
+        |
+        v
+Memory Index
+  - SQLite tables
+  - BM25 / FTS
+  - vector embeddings later
+  - graph links
+        |
+        v
+Context Engine
+  - retrieve
+  - rerank
+  - verify
+  - mark stale/contradicted
+  - produce agent context pack
+        |
+        v
+Agent receives safe project context
 ```
+
+## Core Components
+
+### 1. Graph Layer
+
+Purpose:
+
+- build project graph using Graphify
+- keep `graphify-out/graph.json` current
+- generate `graphify-out/graph.html`
+- expose graph status through CLI and MCP
+- map memories to graph nodes
+
+Current public commands:
+
+```bash
+keel graph .
+keel graph-status .
+keel graph-open .
+```
+
+Future memory link:
+
+```text
+memory -> graph_node_id
+memory -> source_file
+memory -> symbol/module/community
+```
+
+### 2. Blackbox Layer
+
+Purpose:
+
+- record what happened during agent work
+- capture evidence, not guesses
+- preserve command failures and successes
+- store user corrections and decisions
+
+Current storage:
+
+```text
+keel-out/keel.db
+```
+
+Current tables:
+
+```text
+sessions
+events
+```
+
+Current public commands:
+
+```bash
+keel session-start .
+keel run "npm run build" --repo . --session 1
+keel blackbox-note "Decision: use yarn locally." --repo . --session 1 --kind decision
+keel sessions .
+keel blackbox-report 1 .
+keel session-end 1 .
+```
+
+Each `keel run` captures:
+
+- command
+- exit code
+- duration
+- timeout state
+- stdout/stderr tails
+- stdout/stderr hashes
+- git head
+- git branch
+- git status
+- changed files
+- diff stat
+- Graphify graph status
+
+### 3. Memory Compiler
+
+This is the next important build.
+
+It converts raw blackbox events into durable memories.
+
+Input:
+
+```text
+command_started
+command_finished
+decision
+finding
+user_correction
+graph_snapshot
+file_change
+```
+
+Output memory tiers:
+
+```text
+working memory
+  raw events from current session
+
+episodic memory
+  compressed summary of what happened in a session
+
+semantic memory
+  durable facts and decisions
+
+procedural memory
+  workflows and project-specific how-to knowledge
+
+graph memory
+  links between memories and Graphify nodes
+```
+
+Example:
+
+```text
+Raw evidence:
+- npm test failed: missing script
+- npm run build passed
+- user noted that Yarn should be used locally
+
+Compiled memory:
+- "This project has no npm test script."
+- "npm run build is a verified build command."
+- "Use Yarn for local development unless package scripts prove otherwise."
+```
+
+### 4. Contradiction Engine
+
+This is Keel's key differentiator.
+
+It compares new evidence against existing memories and project files.
+
+Examples:
+
+```text
+README says:
+  run npm test
+
+package.json says:
+  no test script
+
+blackbox says:
+  npm test failed with missing script
+
+Keel should mark:
+  README testing instruction = contradicted/stale
+```
+
+Memory statuses:
+
+```text
+verified
+unverified
+stale
+contradicted
+inferred
+```
+
+Confidence signals:
+
+```text
+command evidence > user note > current file > graph inference > old summary
+```
+
+### 5. Retrieval Engine
+
+The retrieval engine should answer:
+
+```text
+What should the agent know before doing this task?
+```
+
+Retrieval sources:
+
+- blackbox events
+- compiled memories
+- Graphify nodes and communities
+- current files
+- git state
+
+Ranking signals:
+
+- text match
+- memory type
+- graph proximity
+- recency
+- verification status
+- contradiction status
+- source reliability
+
+Target output:
+
+```markdown
+# Keel Context
+
+Coverage: HIGH
+
+## Verified Facts
+- npm run build passed in session #1.
+- npm test failed because package.json has no test script.
+
+## Relevant Graph Nodes
+- package.json
+- vite.config.js
+- src/App.jsx
+
+## Warnings
+- README testing instructions appear stale.
+
+## Suggested Next Action
+- Use npm run build as verification unless the user asks for test setup.
+```
+
+### 6. MCP Layer
+
+Purpose:
+
+- let agents use Keel without manually typing CLI commands
+- expose graph and memory operations to Codex/Claude/Cursor/Gemini
+
+Current MCP tools:
+
+```text
+mcp_graph_build
+mcp_graph_status
+mcp_blackbox_start
+mcp_blackbox_run
+mcp_blackbox_note
+mcp_blackbox_sessions
+mcp_blackbox_report
+mcp_blackbox_end
+```
+
+Future MCP tools:
+
+```text
+mcp_memory_consolidate
+mcp_memory_search
+mcp_memory_context
+mcp_memory_contradictions
+mcp_memory_verify
+```
+
+## Target SQLite Schema
+
+Current:
+
+```text
+sessions(id, started_at, ended_at, label, status, repo)
+events(id, session_id, ts, kind, payload_json)
+```
+
+Next:
+
+```text
+memories(
+  id,
+  created_at,
+  updated_at,
+  tier,
+  kind,
+  title,
+  content,
+  status,
+  confidence,
+  source_event_ids_json,
+  graph_node_ids_json,
+  file_paths_json,
+  tags_json,
+  metadata_json
+)
+
+memory_links(
+  id,
+  source_memory_id,
+  target_type,
+  target_id,
+  relation,
+  confidence
+)
+
+contradictions(
+  id,
+  memory_id,
+  contradicting_source_type,
+  contradicting_source_id,
+  summary,
+  status,
+  detected_at
+)
+```
+
+## Minimal Build Plan
+
+Phase 1: Keep current graph and blackbox.
+
+Already present:
+
+- `keel graph`
+- `keel run`
+- `keel blackbox-report`
+- MCP graph/blackbox tools
+
+Phase 2: Add memory compiler.
+
+Commands:
+
+```bash
+keel consolidate --session 1
+keel memories .
+```
+
+MCP:
+
+```text
+mcp_memory_consolidate
+```
+
+Phase 3: Add retrieval and context.
+
+Commands:
+
+```bash
+keel search "how do I test this project?"
+keel context "modify the todo app"
+```
+
+MCP:
+
+```text
+mcp_memory_search
+mcp_memory_context
+```
+
+Phase 4: Add contradiction detection.
+
+Commands:
+
+```bash
+keel contradictions .
+keel verify .
+```
+
+MCP:
+
+```text
+mcp_memory_contradictions
+mcp_memory_verify
+```
+
+Phase 5: Evaluate.
+
+Benchmark tasks:
+
+- retrieve correct build/test command
+- avoid repeated failed command
+- identify stale README instruction
+- remember user correction
+- link task to correct Graphify nodes
+- reduce context tokens
+
+## Success Definition
+
+Keel is better than generic agent memory when it can say:
+
+```text
+The README says npm test, but that is contradicted.
+In session #1, npm test failed because no test script exists.
+npm run build passed.
+The relevant files are package.json and vite.config.js.
+Use npm run build as the verified command.
+```
+
+That is the product.

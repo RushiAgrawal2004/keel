@@ -461,5 +461,27 @@
 
 ### Verification
 - `python -m pytest` passed with 25 tests.
+- Refreshed Graphify after new architecture doc: `621 nodes`, `2151 edges`, `37 communities`.
 - `python -m build` created the `keel_arch-0.1.0` sdist and wheel.
 - Refreshed Graphify after disabling extra public features: `617 nodes`, `2146 edges`, `39 communities`.
+
+## 2026-06-02 - New Keel Memory Engine Architecture
+
+### Request
+- Create a new Keel architecture file for a better-than-agentmemory direction.
+
+### Changes
+- Replaced stale `ARCHITECTURE.md` with the new product architecture:
+  - project memory engine thesis
+  - Graphify-first memory
+  - evidence-first blackbox capture
+  - memory compiler
+  - contradiction detection
+  - retrieval/context engine
+  - MCP layer
+  - target SQLite schema
+  - phased build plan
+  - success definition centered on verified project truth
+
+### Verification
+- `python -m pytest` passed with 25 tests.
