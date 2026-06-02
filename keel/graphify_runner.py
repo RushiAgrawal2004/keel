@@ -9,6 +9,10 @@ from typing import Any
 from .config import load_config
 
 
+class GraphifyError(RuntimeError):
+    """Raised when Keel cannot produce or read the Graphify graph."""
+
+
 def ensure_graph(repo_path: Path, update: bool = False) -> Path:
     config = load_config(repo_path)
     graph_path = repo_path / config.graph.get("path", "graphify-out/graph.json")
@@ -16,16 +20,28 @@ def ensure_graph(repo_path: Path, update: bool = False) -> Path:
         return graph_path
     graphify = shutil.which("graphify")
     if not graphify:
-        raise RuntimeError("Graphify is not installed or not on PATH")
+        raise GraphifyError("Graphify is not installed or not on PATH. Install Graphify, or run `keel sync . --no-graph` for memory-only mode.")
     command = [graphify, str(repo_path)]
     if update:
         command.append("--update")
     result = subprocess.run(command, cwd=repo_path, text=True, capture_output=True, check=False)
     if result.returncode != 0:
-        raise RuntimeError(result.stderr.strip() or result.stdout.strip() or "Graphify failed")
+        raise GraphifyError(_clean_graphify_failure(result.stderr.strip() or result.stdout.strip() or "Graphify failed"))
     if not graph_path.exists():
-        raise RuntimeError(f"Graphify did not create {graph_path}")
+        raise GraphifyError(f"Graphify did not create {graph_path}")
     return graph_path
+
+
+def _clean_graphify_failure(message: str) -> str:
+    lower = message.lower()
+    if "no llm api key found" in lower or "api key" in lower:
+        return (
+            "Graphify needs an LLM API key before it can build the semantic graph. "
+            "Set GEMINI_API_KEY, GOOGLE_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY, "
+            "or another supported provider key, then rerun the command. "
+            "For memory-only testing, run `keel sync . --no-graph`."
+        )
+    return message
 
 
 def graph_status(repo_path: Path) -> dict[str, Any]:

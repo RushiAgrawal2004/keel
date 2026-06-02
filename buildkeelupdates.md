@@ -341,3 +341,21 @@
 ### Verification
 - `python -m pytest` passed with 32 tests.
 - Refreshed Graphify after adding the operations guide: `544 nodes`, `1795 edges`, `32 communities`.
+
+## 2026-06-02 - Friendly Graphify Failure Output
+
+### Request
+- Investigate scary Keel output from a test project where Graphify failed with `no LLM API key found`.
+
+### Changes
+- Added `GraphifyError` in `keel/graphify_runner.py`.
+- Converted missing Graphify/API-key failures into clean, actionable messages.
+- Hid Typer rich exception locals so Keel does not dump config objects, subprocess internals, or paths during normal CLI failures.
+- Updated graph-dependent CLI commands to exit cleanly when Graphify is not ready.
+- Added a CLI regression test for Graphify API-key failure output.
+
+### Verification
+- `python -m pytest` passed with 33 tests.
+- First `graphify . --update` attempt failed because the shell had no provider key exported.
+- Retried after loading `GEMINI_API_KEY` from `.env` without printing it.
+- Refreshed Graphify after friendly-failure changes: `564 nodes`, `1834 edges`, `35 communities`.

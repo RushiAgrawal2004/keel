@@ -1,4 +1,5 @@
 from pathlib import Path
+import subprocess
 
 from typer.testing import CliRunner
 
@@ -215,6 +216,46 @@ def test_cli_agent_setup_and_sync(tmp_path: Path) -> None:
     assert '"memory_count": 1' in manager_status.stdout
     assert graph_status.exit_code == 0
     assert '"exists": false' in graph_status.stdout
+
+
+def test_cli_graphify_api_key_failure_is_friendly(tmp_path: Path, monkeypatch) -> None:
+    (tmp_path / ".keel.yml").write_text(
+        """version: 1
+project:
+  name: demo
+graph:
+  provider: graphify
+  path: graphify-out/graph.json
+layers: {}
+zones: {}
+ignore: []
+approved_contracts: []
+rules: []
+""",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr("keel.graphify_runner.shutil.which", lambda name: "graphify")
+
+    def fake_run(*args, **kwargs):
+        return subprocess.CompletedProcess(
+            args=args,
+            returncode=1,
+            stdout="",
+            stderr="error: no LLM API key found. Set GEMINI_API_KEY or GOOGLE_API_KEY, or pass --backend.\n",
+        )
+
+    monkeypatch.setattr("keel.graphify_runner.subprocess.run", fake_run)
+    runner = CliRunner()
+
+    result = runner.invoke(app, ["graph-quality", str(tmp_path)])
+    output = result.stdout + result.stderr
+
+    assert result.exit_code == 2
+    assert "Graphify not ready" in output
+    assert "Graphify needs an LLM API key" in output
+    assert "Config(" not in output
+    assert "CompletedProcess" not in output
 
 
 def _copy_project(tmp_path: Path, fixtures: Path, graph_name: str) -> None:

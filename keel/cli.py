@@ -16,7 +16,7 @@ from .dashboard import build_dashboard
 from .discover import discover_contracts
 from .graph import load_graph
 from .graph_quality import graph_quality
-from .graphify_runner import ensure_graph, graph_status
+from .graphify_runner import GraphifyError, ensure_graph, graph_status
 from .layers import assign_layers_and_zones
 from .memory import (
     context_pack,
@@ -46,14 +46,14 @@ from .report import render_check_html, render_check_result, render_discover, ren
 from .serve import main as serve_main
 from .webhook import send_governance_webhook
 
-app = typer.Typer(no_args_is_help=True)
+app = typer.Typer(no_args_is_help=True, pretty_exceptions_show_locals=False)
 
 
 @app.command()
 def build(path: Annotated[Path, typer.Argument()] = Path(".")) -> None:
     repo = path.resolve()
     config = load_config(repo)
-    graph = load_graph(ensure_graph(repo))
+    graph = load_graph(_ensure_graph_or_exit(repo))
     assign_layers_and_zones(graph, config)
     out_dir = repo / "keel-out"
     out_dir.mkdir(exist_ok=True)
@@ -142,7 +142,7 @@ def discover(
 ) -> None:
     repo = path.resolve()
     config = load_config(repo)
-    graph = load_graph(ensure_graph(repo))
+    graph = load_graph(_ensure_graph_or_exit(repo))
     assign_layers_and_zones(graph, config)
     proposals = discover_contracts(graph, config, include_low=include_low)
     if write:
@@ -194,7 +194,10 @@ def check(
     html: Annotated[bool, typer.Option("--html", help="Write keel-out/check-report.html.")] = False,
 ) -> None:
     repo = path.resolve()
-    result = check_repo_result(repo, changed_files=changed)
+    try:
+        result = check_repo_result(repo, changed_files=changed)
+    except GraphifyError as exc:
+        _graphify_exit(exc)
     if html:
         out_dir = repo / "keel-out"
         out_dir.mkdir(exist_ok=True)
@@ -221,7 +224,7 @@ def check(
 def brief(path: Annotated[Path, typer.Argument()] = Path(".")) -> None:
     repo = path.resolve()
     config = load_config(repo)
-    graph = load_graph(ensure_graph(repo))
+    graph = load_graph(_ensure_graph_or_exit(repo))
     assign_layers_and_zones(graph, config)
     typer.echo(make_brief(graph, config))
 
@@ -449,7 +452,10 @@ def serve(path: Annotated[Path, typer.Option("--repo", help="Repository path to 
 @app.command()
 def baseline(path: Annotated[Path, typer.Argument()] = Path(".")) -> None:
     repo = path.resolve()
-    baseline_path = write_baseline(repo)
+    try:
+        baseline_path = write_baseline(repo)
+    except GraphifyError as exc:
+        _graphify_exit(exc)
     record_event(repo, "baseline_written", {"path": str(baseline_path.relative_to(repo))})
     typer.echo(f"Wrote {baseline_path}")
 
@@ -518,7 +524,10 @@ def graph_quality_command(
     path: Annotated[Path, typer.Argument()] = Path("."),
     json_output: Annotated[bool, typer.Option("--json", help="Print machine-readable JSON.")] = False,
 ) -> None:
-    quality = graph_quality(path.resolve())
+    try:
+        quality = graph_quality(path.resolve())
+    except GraphifyError as exc:
+        _graphify_exit(exc)
     record_event(path.resolve(), "graph_quality", {"score": quality["score"], "status": quality["status"]})
     if json_output:
         typer.echo(json.dumps(quality, indent=2))
@@ -534,7 +543,10 @@ def dashboard(
     output: Annotated[Path | None, typer.Option("--output", help="Dashboard HTML output path.")] = None,
 ) -> None:
     repo = path.resolve()
-    out = build_dashboard(repo, output)
+    try:
+        out = build_dashboard(repo, output)
+    except GraphifyError as exc:
+        _graphify_exit(exc)
     record_event(repo, "dashboard_written", {"path": str(out)})
     typer.echo(f"Wrote {out}")
 
@@ -545,7 +557,10 @@ def pr_comment(
     output: Annotated[Path | None, typer.Option("--output", help="PR comment markdown output path.")] = None,
 ) -> None:
     repo = path.resolve()
-    out = write_pr_comment(repo, output)
+    try:
+        out = write_pr_comment(repo, output)
+    except GraphifyError as exc:
+        _graphify_exit(exc)
     record_event(repo, "pr_comment_written", {"path": str(out)})
     typer.echo(f"Wrote {out}")
 
@@ -591,6 +606,18 @@ def _check_payload(result) -> dict:
         "blocking": [asdict(item) for item in result.blocking],
         "known_debt": [asdict(item) for item in result.known_debt],
     }
+
+
+def _ensure_graph_or_exit(repo: Path, *, update: bool = False) -> Path:
+    try:
+        return ensure_graph(repo, update=update)
+    except GraphifyError as exc:
+        _graphify_exit(exc)
+
+
+def _graphify_exit(exc: GraphifyError) -> None:
+    typer.echo(f"Graphify not ready: {exc}", err=True)
+    raise typer.Exit(2)
 
 
 if __name__ == "__main__":
