@@ -359,3 +359,21 @@
 - First `graphify . --update` attempt failed because the shell had no provider key exported.
 - Retried after loading `GEMINI_API_KEY` from `.env` without printing it.
 - Refreshed Graphify after friendly-failure changes: `564 nodes`, `1834 edges`, `35 communities`.
+
+## 2026-06-02 - Graphify `.env` Bootstrap
+
+### Request
+- When a Keel command needs Graphify and no API key is available, create a project `.env` preset for Gemini/OpenAI/Claude-style keys, then let the user rerun the same command.
+
+### Changes
+- Added project `.env` loading inside `keel/graphify_runner.py`.
+- Keel now loads real Graphify provider keys from `.env` before running Graphify.
+- If Graphify fails because no API key exists, Keel creates or updates `.env` with safe placeholder keys.
+- Keel adds `.env` to the target repo `.gitignore` when it creates/updates the template.
+- Keel retries Graphify automatically when a real key is available from `.env`.
+- Added tests for friendly `.env` creation and automatic `.env` key loading.
+
+### Verification
+- `python -m pytest` passed with 34 tests.
+- `python -m build` created the `keel_arch-0.1.0` sdist and wheel.
+- Refreshed Graphify after `.env` bootstrap changes: `574 nodes`, `1892 edges`, `33 communities`.

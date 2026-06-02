@@ -4,6 +4,7 @@ import subprocess
 from typer.testing import CliRunner
 
 from keel.cli import app
+from keel.graphify_runner import GRAPHIFY_API_KEYS, ensure_graph
 
 
 def test_cli_discover_does_not_write_by_default(tmp_path: Path) -> None:
@@ -219,6 +220,8 @@ def test_cli_agent_setup_and_sync(tmp_path: Path) -> None:
 
 
 def test_cli_graphify_api_key_failure_is_friendly(tmp_path: Path, monkeypatch) -> None:
+    for key in GRAPHIFY_API_KEYS:
+        monkeypatch.delenv(key, raising=False)
     (tmp_path / ".keel.yml").write_text(
         """version: 1
 project:
@@ -254,8 +257,50 @@ rules: []
     assert result.exit_code == 2
     assert "Graphify not ready" in output
     assert "Graphify needs an LLM API key" in output
+    assert (tmp_path / ".env").exists()
+    assert "GEMINI_API_KEY=paste_your_gemini_key_here" in (tmp_path / ".env").read_text(encoding="utf-8")
+    assert ".env" in (tmp_path / ".gitignore").read_text(encoding="utf-8")
     assert "Config(" not in output
     assert "CompletedProcess" not in output
+
+
+def test_graphify_loads_project_env_for_retry(tmp_path: Path, monkeypatch) -> None:
+    for key in GRAPHIFY_API_KEYS:
+        monkeypatch.delenv(key, raising=False)
+    (tmp_path / ".keel.yml").write_text(
+        """version: 1
+project:
+  name: demo
+graph:
+  provider: graphify
+  path: graphify-out/graph.json
+layers: {}
+zones: {}
+ignore: []
+approved_contracts: []
+rules: []
+""",
+        encoding="utf-8",
+    )
+    (tmp_path / ".env").write_text("GEMINI_API_KEY=real-test-key\n", encoding="utf-8")
+    monkeypatch.setattr("keel.graphify_runner.shutil.which", lambda name: "graphify")
+    calls = []
+
+    def fake_run(*args, **kwargs):
+        calls.append(kwargs["env"].get("GEMINI_API_KEY"))
+        if kwargs["env"].get("GEMINI_API_KEY") == "real-test-key":
+            graph_dir = tmp_path / "graphify-out"
+            graph_dir.mkdir()
+            (graph_dir / "graph.json").write_text('{"nodes": [], "edges": []}', encoding="utf-8")
+            return subprocess.CompletedProcess(args=args, returncode=0, stdout="ok", stderr="")
+        return subprocess.CompletedProcess(args=args, returncode=1, stdout="", stderr="error: no LLM API key found")
+
+    monkeypatch.setattr("keel.graphify_runner.subprocess.run", fake_run)
+
+    graph_path = ensure_graph(tmp_path)
+
+    assert graph_path == tmp_path / "graphify-out" / "graph.json"
+    assert calls == ["real-test-key"]
 
 
 def _copy_project(tmp_path: Path, fixtures: Path, graph_name: str) -> None:
