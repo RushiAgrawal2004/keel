@@ -327,3 +327,17 @@
 - `python -m keel.cli graph-status . --json` reported the current Graphify graph status.
 - `python -m twine check dist/*` passed.
 - Refreshed Graphify after safe-context/status changes: `535 nodes`, `1787 edges`, `30 communities`.
+
+## 2026-06-02 - Operations Guide
+
+### Request
+- Provide a file with step-by-step instructions for using Keel, monitoring Keel, testing Keel, and developing Keel further.
+
+### Changes
+- Added `KEEL_OPERATIONS_GUIDE.md`.
+- Covered install, first setup, project sync, Claude Code/agent setup, safe context, memory operations, manager monitoring, Graphify monitoring, architecture rules, reports, user testing, developer testing, development workflow, roadmap, and debugging checklist.
+- Linked `KEEL_OPERATIONS_GUIDE.md` from `README.md`.
+
+### Verification
+- `python -m pytest` passed with 32 tests.
+- Refreshed Graphify after adding the operations guide: `544 nodes`, `1795 edges`, `32 communities`.

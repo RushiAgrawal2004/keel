@@ -17,7 +17,7 @@ keel check .
 
 Keel reads `graphify-out/graph.json`, proposes deterministic architecture contracts from the graph, and enforces only contracts a human approved in `.keel.yml`.
 
-For the internal design, see [ARCHITECTURE.md](ARCHITECTURE.md) and [MEMORY_ARCHITECTURE.md](MEMORY_ARCHITECTURE.md).
+For the internal design, see [ARCHITECTURE.md](ARCHITECTURE.md), [MEMORY_ARCHITECTURE.md](MEMORY_ARCHITECTURE.md), and [KEEL_OPERATIONS_GUIDE.md](KEEL_OPERATIONS_GUIDE.md).
 
 ## Agent Memory
 
