@@ -18,7 +18,16 @@ from .graph import load_graph
 from .graph_quality import graph_quality
 from .graphify_runner import ensure_graph
 from .layers import assign_layers_and_zones
-from .memory import export_events_jsonl, list_events, record_event
+from .memory import (
+    export_events_jsonl,
+    forget_memory,
+    list_events,
+    list_memories,
+    recall as recall_memories,
+    record_event,
+    remember as remember_memory,
+    remember_project_context,
+)
 from .onboard import doctor as run_doctor
 from .onboard import mcp_config, pretty_json, quickstart as run_quickstart
 from .onboard import write_preset_config
@@ -211,6 +220,80 @@ def brief(path: Annotated[Path, typer.Argument()] = Path(".")) -> None:
 @app.command()
 def replay(session_id: Annotated[int, typer.Argument()], path: Annotated[Path, typer.Argument()] = Path(".")) -> None:
     typer.echo(render_replay(get_session(path.resolve(), session_id)))
+
+
+@app.command()
+def remember(
+    content: Annotated[str | None, typer.Argument(help="Memory text to store.")] = None,
+    repo: Annotated[Path, typer.Option("--repo", help="Repository path for the memory store.")] = Path("."),
+    kind: Annotated[str, typer.Option("--kind", help="Memory kind, such as project, architecture, decision, preference, or session.")] = "note",
+    title: Annotated[str | None, typer.Option("--title", help="Short title for this memory.")] = None,
+    tag: Annotated[list[str] | None, typer.Option("--tag", help="Tag to attach. Can be used multiple times.")] = None,
+    from_project: Annotated[bool, typer.Option("--from-project", help="Import README, architecture, Graphify report, and .keel.yml summaries.")] = False,
+    json_output: Annotated[bool, typer.Option("--json", help="Print machine-readable JSON.")] = False,
+) -> None:
+    path = repo.resolve()
+    if from_project:
+        ids = remember_project_context(path)
+        payload = {"stored": ids, "count": len(ids)}
+        typer.echo(json.dumps(payload, indent=2) if json_output else f"Stored {len(ids)} project memory item(s).")
+        return
+    if not content:
+        raise typer.BadParameter("Provide memory text or use --from-project.")
+    memory_id = remember_memory(path, content, kind=kind, title=title, tags=tag or [])
+    payload = {"id": memory_id, "kind": kind, "title": title or content[:80]}
+    typer.echo(json.dumps(payload, indent=2) if json_output else f"Remembered memory #{memory_id}.")
+
+
+@app.command()
+def recall(
+    query: Annotated[str, typer.Argument(help="Question or keywords to recall memories for.")],
+    repo: Annotated[Path, typer.Option("--repo", help="Repository path for the memory store.")] = Path("."),
+    limit: Annotated[int, typer.Option("--limit", help="Maximum memories to return.")] = 5,
+    kind: Annotated[str | None, typer.Option("--kind", help="Only recall this memory kind.")] = None,
+    tag: Annotated[list[str] | None, typer.Option("--tag", help="Require tag. Can be used multiple times.")] = None,
+    json_output: Annotated[bool, typer.Option("--json", help="Print machine-readable JSON.")] = False,
+) -> None:
+    memories = recall_memories(repo.resolve(), query, limit=limit, kind=kind, tags=tag or [])
+    if json_output:
+        typer.echo(json.dumps(memories, indent=2))
+        return
+    if not memories:
+        typer.echo("No matching memories found.")
+        return
+    for item in memories:
+        typer.echo(f"[{item['score']}] #{item['id']} {item['kind']} - {item['title']}")
+        typer.echo(f"source: {item['source']} tags: {', '.join(item['tags']) or '-'}")
+        typer.echo(item["content"])
+        typer.echo("")
+
+
+@app.command("memories")
+def memories_command(
+    repo: Annotated[Path, typer.Option("--repo", help="Repository path for the memory store.")] = Path("."),
+    limit: Annotated[int, typer.Option("--limit", help="Maximum memories to show.")] = 20,
+    kind: Annotated[str | None, typer.Option("--kind", help="Only list this memory kind.")] = None,
+    json_output: Annotated[bool, typer.Option("--json", help="Print machine-readable JSON.")] = False,
+) -> None:
+    memories = list_memories(repo.resolve(), limit=limit, kind=kind)
+    if json_output:
+        typer.echo(json.dumps(memories, indent=2))
+        return
+    if not memories:
+        typer.echo("No memories stored yet.")
+        return
+    for item in memories:
+        typer.echo(f"#{item['id']} {item['kind']} - {item['title']} ({item['source']})")
+
+
+@app.command("forget")
+def forget_command(
+    memory_id: Annotated[int, typer.Argument(help="Memory id to delete.")],
+    repo: Annotated[Path, typer.Option("--repo", help="Repository path for the memory store.")] = Path("."),
+) -> None:
+    if not forget_memory(repo.resolve(), memory_id):
+        raise typer.BadParameter(f"Memory not found: {memory_id}")
+    typer.echo(f"Forgot memory #{memory_id}.")
 
 
 @app.command()

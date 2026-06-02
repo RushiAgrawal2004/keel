@@ -1,14 +1,14 @@
 [project]
 name = "keel-arch"
 version = "0.1.0"
-description = "Architecture regression tests for AI-generated code, powered by Graphify."
+description = "Persistent project memory and architecture checks for coding agents, powered by Graphify."
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
 authors = [
   {name = "Keel Contributors"},
 ]
-keywords = ["architecture", "regression-testing", "graphify", "ai-code", "ci"]
+keywords = ["agent-memory", "architecture", "regression-testing", "graphify", "ai-code", "mcp", "ci"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Environment :: Console",

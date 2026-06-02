@@ -184,3 +184,29 @@
 ### Verification
 - `python -m pytest` passed with 23 tests.
 - Refreshed Graphify after adding architecture documentation: `440 nodes`, `1332 edges`, `30 communities`.
+
+## 2026-06-02 - Agent Memory Engine
+
+### Request
+- Build Keel as a complex memory engine for Codex and Claude, not only an architecture checker.
+
+### Changes
+- Extended `keel/memory.py` with durable memory storage in `keel-out/keel.sqlite3`.
+- Added memory operations: `remember`, `remember_project_context`, `recall`, `list_memories`, and `forget_memory`.
+- Added CLI commands:
+  - `keel remember`
+  - `keel recall`
+  - `keel memories`
+  - `keel forget`
+- Added MCP helper functions and server tools:
+  - `memory_search`
+  - `memory_write`
+  - `memory_bootstrap`
+- Updated README, architecture docs, and package metadata to frame Keel as persistent project memory plus architecture checks for coding agents.
+- Added tests for memory storage, recall, bootstrap import, CLI commands, and MCP helper functions.
+
+### Verification
+- `python -m pytest` passed with 28 tests.
+- `python -m build` created the `keel_arch-0.1.0` sdist and wheel.
+- `python -m twine check dist/*` passed.
+- Refreshed Graphify after memory-engine changes: `468 nodes`, `1490 edges`, `32 communities`.

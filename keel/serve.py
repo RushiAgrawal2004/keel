@@ -12,6 +12,9 @@ from .config import load_config
 from .graph import load_graph
 from .graphify_runner import ensure_graph
 from .layers import assign_layers_and_zones
+from .memory import recall as recall_memories
+from .memory import remember as remember_memory
+from .memory import remember_project_context
 from .record import get_session, log_action, start_session
 from .report import render_replay
 
@@ -38,6 +41,26 @@ def record_action(kind: str, payload: dict[str, Any], session_id: int | None = N
 
 def get_replay(session_id: int, repo_path: Path | None = None) -> str:
     return render_replay(get_session(_repo(repo_path), session_id))
+
+
+def memory_search(query: str, limit: int = 5, repo_path: Path | None = None) -> list[dict[str, Any]]:
+    return recall_memories(_repo(repo_path), query, limit=limit)
+
+
+def memory_write(
+    content: str,
+    kind: str = "note",
+    title: str | None = None,
+    tags: list[str] | None = None,
+    repo_path: Path | None = None,
+) -> dict[str, Any]:
+    memory_id = remember_memory(_repo(repo_path), content, kind=kind, title=title, tags=tags or [])
+    return {"ok": True, "memory_id": memory_id}
+
+
+def memory_bootstrap(repo_path: Path | None = None) -> dict[str, Any]:
+    ids = remember_project_context(_repo(repo_path))
+    return {"ok": True, "count": len(ids), "memory_ids": ids}
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -68,6 +91,19 @@ def main(argv: list[str] | None = None) -> None:
     @server.tool()
     def mcp_get_replay(session_id: int) -> str:
         return get_replay(session_id, repo)
+
+    @server.tool()
+    def mcp_memory_search(query: str, limit: int = 5) -> str:
+        return json.dumps(memory_search(query, limit=limit, repo_path=repo), indent=2)
+
+    @server.tool()
+    def mcp_memory_write(content: str, kind: str = "note", title: str | None = None, tags_json: str = "[]") -> str:
+        tags = json.loads(tags_json)
+        return json.dumps(memory_write(content, kind=kind, title=title, tags=tags, repo_path=repo))
+
+    @server.tool()
+    def mcp_memory_bootstrap() -> str:
+        return json.dumps(memory_bootstrap(repo), indent=2)
 
     server.run()
 

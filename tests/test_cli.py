@@ -119,6 +119,46 @@ def test_cli_plug_and_play_commands(tmp_path: Path) -> None:
     assert '"keel build ."' in quickstart.stdout
 
 
+def test_cli_memory_commands(tmp_path: Path) -> None:
+    runner = CliRunner()
+
+    remember = runner.invoke(
+        app,
+        [
+            "remember",
+            "Always update buildkeelupdates.md after every build change.",
+            "--repo",
+            str(tmp_path),
+            "--kind",
+            "preference",
+            "--tag",
+            "agent",
+        ],
+    )
+    recall = runner.invoke(app, ["recall", "build updates", "--repo", str(tmp_path)])
+    memories = runner.invoke(app, ["memories", "--repo", str(tmp_path)])
+
+    assert remember.exit_code == 0
+    assert "Remembered memory" in remember.stdout
+    assert recall.exit_code == 0
+    assert "buildkeelupdates.md" in recall.stdout
+    assert memories.exit_code == 0
+    assert "preference" in memories.stdout
+
+
+def test_cli_remember_from_project(tmp_path: Path) -> None:
+    (tmp_path / "README.md").write_text("# Demo\n\nKeel is a memory engine.", encoding="utf-8")
+    runner = CliRunner()
+
+    remember = runner.invoke(app, ["remember", "--from-project", "--repo", str(tmp_path), "--json"])
+    recall = runner.invoke(app, ["recall", "memory engine", "--repo", str(tmp_path), "--json"])
+
+    assert remember.exit_code == 0
+    assert '"count": 1' in remember.stdout
+    assert recall.exit_code == 0
+    assert '"Project README Summary"' in recall.stdout
+
+
 def _copy_project(tmp_path: Path, fixtures: Path, graph_name: str) -> None:
     (tmp_path / ".keel.yml").write_text((fixtures / "sample.keel.yml").read_text(encoding="utf-8"), encoding="utf-8")
     graph_dir = tmp_path / "graphify-out"

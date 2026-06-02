@@ -1,12 +1,13 @@
 # Keel Architecture
 
-Keel is a local-first architecture governance tool. It reads a Graphify knowledge graph for a repository, maps code nodes into configured layers and zones, proposes architecture contracts, and enforces only the contracts a human has approved.
+Keel is a local-first memory engine and architecture governance tool for coding agents. It stores durable project memory for Codex, Claude, and other MCP-compatible agents, reads a Graphify knowledge graph for a repository, maps code nodes into configured layers and zones, proposes architecture contracts, and enforces only the contracts a human has approved.
 
 The installed package name is `keel-arch`; the command users run is `keel`.
 
 ## Goals
 
 - Make architecture rules executable without requiring users to manually model their whole codebase.
+- Give coding agents durable recall across sessions and tools.
 - Keep humans in control by separating discovered proposals from approved contracts.
 - Support agent workflows through CLI output, JSON artifacts, reports, and an MCP server.
 - Stay plug-and-play for a target repository: install, initialize, build, brief, check.
@@ -34,6 +35,8 @@ layered architecture graph
   |
   +--> make_brief() / MCP tools --> agent guidance
   |
+  +--> remember_project_context() --> durable memory store --> recall/search
+  |
   +--> dashboard/events/export --> human and integration artifacts
 ```
 
@@ -60,6 +63,9 @@ layered architecture graph
 `Violation`
 : A concrete graph edge, package import, zone access, or layer cycle that breaks an approved contract.
 
+`Memory`
+: A durable fact, preference, decision, project summary, graph summary, or session note stored in `keel-out/keel.sqlite3`.
+
 ## Main Modules
 
 | Module | Responsibility |
@@ -77,7 +83,7 @@ layered architecture graph
 | `keel/report.py` | Renders CLI, HTML, explain, and replay output. |
 | `keel/dashboard.py` | Builds local dashboard HTML. |
 | `keel/brief.py` | Builds agent-facing architecture briefs. |
-| `keel/record.py` and `keel/memory.py` | Track sessions, actions, and events in SQLite/JSONL. |
+| `keel/record.py` and `keel/memory.py` | Track sessions, actions, events, durable memories, and recall in SQLite/JSONL. |
 | `keel/serve.py` | Exposes Keel over an MCP stdio server. |
 | `keel/onboard.py` | Provides doctor, quickstart, presets, and MCP config snippets. |
 | `keel/adr.py` | Compiles ADR frontmatter into contract artifacts. |
@@ -98,7 +104,18 @@ layered architecture graph
 | `keel-out/check-report.html` | `keel check --html` | Human-readable check report. |
 | `keel-out/dashboard.html` | `keel dashboard` | Local dashboard. |
 | `keel-out/pr-comment.md` | `keel pr-comment` | Pull request comment body. |
-| `keel-out/keel.sqlite3` | events/session commands | Local event and replay database. |
+| `keel-out/keel.sqlite3` | memory/event commands | Local event and durable memory database. |
+| `keel-out/keel.db` | session commands | Local session replay database. |
+
+## Memory Lifecycle
+
+1. `keel remember --from-project --repo .` imports summaries from README, architecture docs, Graphify report, and `.keel.yml`.
+2. `keel remember "fact" --kind decision --tag architecture` stores a manual memory.
+3. `keel recall "question"` ranks stored memories with deterministic keyword scoring.
+4. `keel memories` lists stored memories.
+5. `keel forget MEMORY_ID` deletes a memory.
+
+Memory search is intentionally deterministic in v1. A future semantic/vector search layer can sit on top of the same durable memory table.
 
 ## Contract Lifecycle
 
@@ -156,6 +173,8 @@ Agent and integration commands:
 keel brief .
 keel serve --repo .
 keel replay SESSION_ID .
+keel remember --from-project --repo .
+keel recall "architecture rules" --repo .
 keel events .
 keel export .
 keel export-events .
@@ -171,6 +190,9 @@ keel webhook URL .
 - `mcp_check_change`: checks a list of changed files for violations.
 - `mcp_record_action`: records agent actions into the local replay log.
 - `mcp_get_replay`: returns a rendered session replay.
+- `mcp_memory_search`: recalls relevant durable memories.
+- `mcp_memory_write`: stores a memory from an agent.
+- `mcp_memory_bootstrap`: imports project context into memory.
 
 This makes Keel usable as a plug-and-play architecture guard for coding agents.
 
@@ -185,7 +207,8 @@ The docs workflow in `.github/workflows/docs.yml` validates `docs/index.html` on
 - Keel does not enforce unapproved proposals.
 - Graph quality limits Keel quality; missing or noisy Graphify edges can affect proposals and checks.
 - Layer and zone assignment is path-prefix based in v1.
-- Keel is focused on architecture boundaries, not general code quality.
+- Keel is focused on project memory and architecture boundaries, not general code quality.
+- Memory recall is keyword-ranked in v1 and does not yet use embeddings.
 - Reports and dashboards are generated static artifacts so the tool works locally and in CI without a hosted backend.
 
 ## Development Map

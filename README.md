@@ -1,8 +1,8 @@
 # Keel
 
-Keel finds the unwritten rules of your codebase and makes them executable.
+Keel is a memory engine for coding agents.
 
-Architecture regression tests for AI-generated code, powered by Graphify.
+It gives Codex, Claude, and other MCP-compatible agents durable project memory, architecture context, session replay, and architecture regression checks powered by Graphify.
 
 ## Quickstart
 
@@ -19,6 +19,17 @@ Keel reads `graphify-out/graph.json`, proposes deterministic architecture contra
 
 For the internal design, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
+## Agent Memory
+
+```bash
+keel remember --from-project --repo .
+keel remember "Always update buildkeelupdates.md after Keel changes." --kind preference --tag agent
+keel recall "how do I run tests?" --repo .
+keel memories --repo .
+```
+
+Keel stores durable memory in `keel-out/keel.sqlite3`. Memories can be project summaries, architecture notes, user preferences, decisions, session facts, or any other context an agent should remember across runs.
+
 ## Commands
 
 ```bash
@@ -30,6 +41,8 @@ keel baseline .
 keel build .
 keel brief .
 keel replay SESSION_ID .
+keel remember "Run tests with python -m pytest." --kind project
+keel recall "tests"
 keel events .
 keel export-events .
 keel export . --format json
@@ -75,6 +88,9 @@ keel serve
 - `check_change`
 - `record_action`
 - `get_replay`
+- `memory_search`
+- `memory_write`
+- `memory_bootstrap`
 
 Set `KEEL_REPO_PATH` or pass `--repo` to point the server at a target repo.
 
