@@ -20,7 +20,7 @@ def hook_config(repo_path: Path, client: str = "codex") -> dict[str, Any]:
         "hooks": {
             "session_start": {
                 "description": "Start blackbox capture and sync the Graphify graph at the start of an agent session.",
-                "commands": [["keel", "session-start", repo], ["keel", "sync", repo]],
+                "commands": [["keel", "session-start", repo], ["keel", "graph", repo]],
             },
             "command": {
                 "description": "Run shell commands through Keel so output, exit code, git state, and graph state are recorded.",
@@ -39,8 +39,7 @@ def hook_config(repo_path: Path, client: str = "codex") -> dict[str, Any]:
             "command": "keel",
             "args": ["serve", "--repo", repo],
             "tools": [
-                "mcp_project_sync",
-                "mcp_project_status",
+                "mcp_graph_build",
                 "mcp_graph_status",
                 "mcp_blackbox_start",
                 "mcp_blackbox_run",
@@ -48,7 +47,6 @@ def hook_config(repo_path: Path, client: str = "codex") -> dict[str, Any]:
                 "mcp_blackbox_sessions",
                 "mcp_blackbox_report",
                 "mcp_blackbox_end",
-                "mcp_check_change",
             ],
         },
     }

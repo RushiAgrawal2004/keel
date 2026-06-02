@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import webbrowser
 import shutil
 import subprocess
 from pathlib import Path
@@ -31,7 +32,7 @@ def ensure_graph(repo_path: Path, update: bool = False) -> Path:
         return graph_path
     graphify = shutil.which("graphify")
     if not graphify:
-        raise GraphifyError("Graphify is not installed or not on PATH. Install Graphify, or run `keel sync . --no-graph` for memory-only mode.")
+        raise GraphifyError("Graphify is not installed or not on PATH. Install Graphify, then run `keel graph .`.")
     command = [graphify, str(repo_path)]
     if update:
         command.append("--update")
@@ -49,6 +50,29 @@ def ensure_graph(repo_path: Path, update: bool = False) -> Path:
     if not graph_path.exists():
         raise GraphifyError(f"Graphify did not create {graph_path}")
     return graph_path
+
+
+def build_graph(repo_path: Path, *, update: bool = True, cluster: bool = True, open_html: bool = False) -> dict[str, Any]:
+    repo = repo_path.resolve()
+    graph_path = ensure_graph(repo, update=update)
+    cluster_error = None
+    if cluster:
+        graphify = shutil.which("graphify")
+        if not graphify:
+            raise GraphifyError("Graphify is not installed or not on PATH.")
+        result = _run_graphify([graphify, "cluster-only", str(repo)], repo, _graphify_env(repo))
+        if result.returncode != 0:
+            cluster_error = result.stderr.strip() or result.stdout.strip() or "Graphify cluster-only failed"
+    html_path = repo / "graphify-out" / "graph.html"
+    if open_html and html_path.exists():
+        webbrowser.open(html_path.resolve().as_uri())
+    return {
+        "ok": cluster_error is None,
+        "graph_path": str(graph_path),
+        "html_path": str(html_path) if html_path.exists() else None,
+        "cluster_error": cluster_error,
+        "status": graph_status(repo),
+    }
 
 
 def _run_graphify(command: list[str], repo_path: Path, env: dict[str, str]) -> subprocess.CompletedProcess[str]:
@@ -152,7 +176,7 @@ def _clean_graphify_failure(message: str, env_path: Path | None = None) -> str:
             "or another supported provider key in the project `.env`, then rerun the same Keel command. "
             "Keel automatically loads `.env` for Graphify commands."
             f"{location} "
-            "For memory-only testing, run `keel sync . --no-graph`."
+            "Then rerun `keel graph .`."
         )
     return message
 

@@ -422,3 +422,44 @@
 - `python -m pytest` passed with 37 tests.
 - `python -m build` created the `keel_arch-0.1.0` sdist and wheel.
 - Refreshed Graphify after blackbox-first changes: `603 nodes`, `2086 edges`, `34 communities`.
+
+## 2026-06-02 - Disable Extra Public Features
+
+### Request
+- Disable everything except:
+  - `keel graph` using Graphify
+  - Keel blackbox memory layer
+  - CLI
+  - MCP
+
+### Changes
+- Replaced the public CLI with a minimal surface:
+  - `keel graph`
+  - `keel graph-status`
+  - `keel graph-open`
+  - `keel session-start`
+  - `keel session-end`
+  - `keel sessions`
+  - `keel run`
+  - `keel blackbox-note`
+  - `keel blackbox-report`
+  - `keel mcp-config`
+  - `keel agent-setup`
+  - `keel serve`
+- Added `build_graph()` to `keel/graphify_runner.py` so `keel graph` runs Graphify and then the cluster/report pass.
+- Replaced the MCP server surface with only:
+  - `mcp_graph_build`
+  - `mcp_graph_status`
+  - `mcp_blackbox_start`
+  - `mcp_blackbox_run`
+  - `mcp_blackbox_note`
+  - `mcp_blackbox_sessions`
+  - `mcp_blackbox_report`
+  - `mcp_blackbox_end`
+- Updated agent setup, hooks, README, and package metadata to remove old public architecture/memory/dashboard positioning.
+- Rewrote CLI/MCP tests so old commands are expected to be unavailable.
+
+### Verification
+- `python -m pytest` passed with 25 tests.
+- `python -m build` created the `keel_arch-0.1.0` sdist and wheel.
+- Refreshed Graphify after disabling extra public features: `617 nodes`, `2146 edges`, `39 communities`.

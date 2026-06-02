@@ -34,7 +34,7 @@ def agent_setup(repo_path: Path, client: str = "claude-code") -> dict[str, Any]:
         "manager_instructions": manager_instructions(repo, normalized),
         "commands": {
             "session_start": ["keel", "session-start", str(repo), "--label", normalized],
-            "graph_sync": ["keel", "sync", str(repo)],
+            "graph": ["keel", "graph", str(repo)],
             "run_command": ["keel", "run", "<command>", "--repo", str(repo), "--session", "<session_id>"],
             "record_decision": ["keel", "blackbox-note", "<note>", "--repo", str(repo), "--session", "<session_id>", "--kind", "decision"],
             "session_report": ["keel", "blackbox-report", "<session_id>", str(repo)],

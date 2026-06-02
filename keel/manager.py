@@ -78,7 +78,7 @@ At session start:
 
 ```bash
 keel session-start "{repo}" --label "{client}"
-keel sync "{repo}"
+keel graph "{repo}"
 ```
 
 During work, run shell commands through Keel so they are recorded:
@@ -105,8 +105,7 @@ keel session-end <SESSION_ID> "{repo}"
 
 Prefer MCP tools when available:
 
-- `mcp_project_sync`
-- `mcp_project_status`
+- `mcp_graph_build`
 - `mcp_graph_status`
 - `mcp_blackbox_start`
 - `mcp_blackbox_run`
@@ -114,7 +113,6 @@ Prefer MCP tools when available:
 - `mcp_blackbox_sessions`
 - `mcp_blackbox_report`
 - `mcp_blackbox_end`
-- `mcp_check_change`
 
 ## Safety Rule
 

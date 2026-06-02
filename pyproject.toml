@@ -1,14 +1,14 @@
 [project]
 name = "keel-arch"
 version = "0.1.0"
-description = "Persistent project memory and architecture checks for coding agents, powered by Graphify."
+description = "Blackbox recorder and Graphify launcher for coding agents."
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
 authors = [
   {name = "Keel Contributors"},
 ]
-keywords = ["agent-memory", "architecture", "benchmark", "regression-testing", "graphify", "ai-code", "mcp", "ci"]
+keywords = ["agent-memory", "blackbox", "graphify", "ai-code", "mcp", "cli"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Environment :: Console",
