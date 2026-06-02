@@ -16,43 +16,38 @@ def hook_config(repo_path: Path, client: str = "codex") -> dict[str, Any]:
     return {
         "client": normalized,
         "repo": repo,
-        "purpose": "Lifecycle hooks for automatic Keel memory capture and recall.",
+        "purpose": "Lifecycle hooks for Keel blackbox recording, Graphify sync, and MCP access.",
         "hooks": {
             "session_start": {
-                "description": "Sync project memory and graph at the start of an agent session.",
-                "command": ["keel", "sync", repo],
+                "description": "Start blackbox capture and sync the Graphify graph at the start of an agent session.",
+                "commands": [["keel", "session-start", repo], ["keel", "sync", repo]],
             },
-            "before_task": {
-                "description": "Fetch a memory context pack before coding.",
-                "command_template": ["keel", "context", "{task}", "--repo", repo, "--limit", "8"],
+            "command": {
+                "description": "Run shell commands through Keel so output, exit code, git state, and graph state are recorded.",
+                "command_template": ["keel", "run", "{command}", "--repo", repo, "--session", "{session_id}"],
             },
-            "after_task": {
-                "description": "Store a concise task summary after coding.",
-                "command_template": [
-                    "keel",
-                    "remember",
-                    "{summary}",
-                    "--repo",
-                    repo,
-                    "--kind",
-                    "session",
-                    "--tag",
-                    "agent",
-                    "--gate",
-                ],
+            "decision": {
+                "description": "Record decisions and findings into the blackbox timeline.",
+                "command_template": ["keel", "blackbox-note", "{note}", "--repo", repo, "--session", "{session_id}", "--kind", "decision"],
+            },
+            "session_end": {
+                "description": "Write a blackbox report and close the session.",
+                "commands_template": [["keel", "blackbox-report", "{session_id}", repo], ["keel", "session-end", "{session_id}", repo]],
             },
         },
         "mcp": {
             "command": "keel",
             "args": ["serve", "--repo", repo],
             "tools": [
-                "mcp_memory_search",
-                "mcp_memory_write",
-                "mcp_memory_bootstrap",
-                "mcp_memory_context",
                 "mcp_project_sync",
                 "mcp_project_status",
                 "mcp_graph_status",
+                "mcp_blackbox_start",
+                "mcp_blackbox_run",
+                "mcp_blackbox_note",
+                "mcp_blackbox_sessions",
+                "mcp_blackbox_report",
+                "mcp_blackbox_end",
                 "mcp_check_change",
             ],
         },

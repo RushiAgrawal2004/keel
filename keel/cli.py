@@ -41,7 +41,7 @@ from .onboard import doctor as run_doctor
 from .onboard import mcp_config, pretty_json, quickstart as run_quickstart
 from .onboard import write_preset_config
 from .pr_comment import write_pr_comment
-from .record import get_session
+from .record import blackbox_report, end_session, get_session, list_sessions, record_note, run_command, start_session
 from .report import render_check_html, render_check_result, render_discover, render_explain, render_replay
 from .serve import main as serve_main
 from .webhook import send_governance_webhook
@@ -232,6 +232,103 @@ def brief(path: Annotated[Path, typer.Argument()] = Path(".")) -> None:
 @app.command()
 def replay(session_id: Annotated[int, typer.Argument()], path: Annotated[Path, typer.Argument()] = Path(".")) -> None:
     typer.echo(render_replay(get_session(path.resolve(), session_id)))
+
+
+@app.command("session-start")
+def session_start(
+    path: Annotated[Path, typer.Argument(help="Repository path.")] = Path("."),
+    label: Annotated[str | None, typer.Option("--label", help="Human label for this blackbox session.")] = None,
+    json_output: Annotated[bool, typer.Option("--json", help="Print machine-readable JSON.")] = False,
+) -> None:
+    repo = path.resolve()
+    session_id = start_session(repo, label=label)
+    payload = {"session_id": session_id, "repo": str(repo), "label": label, "status": "running"}
+    typer.echo(json.dumps(payload, indent=2) if json_output else f"Started Keel blackbox session #{session_id}")
+
+
+@app.command("session-end")
+def session_end(
+    session_id: Annotated[int, typer.Argument(help="Session id to close.")],
+    path: Annotated[Path, typer.Argument(help="Repository path.")] = Path("."),
+    status: Annotated[str, typer.Option("--status", help="Final session status.")] = "completed",
+    json_output: Annotated[bool, typer.Option("--json", help="Print machine-readable JSON.")] = False,
+) -> None:
+    payload = end_session(path.resolve(), session_id, status=status)
+    typer.echo(json.dumps(payload, indent=2) if json_output else f"Ended Keel blackbox session #{session_id} as {status}")
+
+
+@app.command("sessions")
+def sessions_command(
+    path: Annotated[Path, typer.Argument(help="Repository path.")] = Path("."),
+    limit: Annotated[int, typer.Option("--limit", help="Maximum sessions to show.")] = 20,
+    json_output: Annotated[bool, typer.Option("--json", help="Print machine-readable JSON.")] = False,
+) -> None:
+    sessions = list_sessions(path.resolve(), limit=limit)
+    if json_output:
+        typer.echo(json.dumps(sessions, indent=2))
+        return
+    if not sessions:
+        typer.echo("No Keel blackbox sessions yet.")
+        return
+    for item in sessions:
+        label = f" {item['label']}" if item.get("label") else ""
+        typer.echo(f"#{item['id']} {item['status']}{label} events={item['event_count']} started={item['started_at']}")
+
+
+@app.command("run")
+def run_command_cli(
+    command: Annotated[str, typer.Argument(help="Shell command to run and record.")],
+    path: Annotated[Path, typer.Option("--repo", help="Repository path.")] = Path("."),
+    session_id: Annotated[int | None, typer.Option("--session", help="Existing blackbox session id.")] = None,
+    timeout: Annotated[int, typer.Option("--timeout", help="Command timeout in seconds.")] = 600,
+    update_graph: Annotated[bool, typer.Option("--update-graph", help="Update Graphify after the command finishes.")] = False,
+    json_output: Annotated[bool, typer.Option("--json", help="Print machine-readable JSON.")] = False,
+) -> None:
+    result = run_command(path.resolve(), command, session_id=session_id, timeout=timeout, update_graph=update_graph)
+    if json_output:
+        typer.echo(json.dumps(result, indent=2))
+    else:
+        typer.echo(f"Keel recorded command in session #{result['session_id']} event #{result['event_id']}")
+        typer.echo(f"Exit: {result['returncode']} Duration: {result['duration_ms']}ms")
+        if result["changed_files"]:
+            typer.echo("Changed files:")
+            for item in result["changed_files"][:20]:
+                typer.echo(f"  {item}")
+        if result["stdout_tail"].strip():
+            typer.echo("stdout:")
+            typer.echo(result["stdout_tail"])
+        if result["stderr_tail"].strip():
+            typer.echo("stderr:")
+            typer.echo(result["stderr_tail"])
+    if result["returncode"] != 0:
+        raise typer.Exit(result["returncode"])
+
+
+@app.command("blackbox-note")
+def blackbox_note(
+    note: Annotated[str, typer.Argument(help="Note or decision to record.")],
+    path: Annotated[Path, typer.Option("--repo", help="Repository path.")] = Path("."),
+    session_id: Annotated[int | None, typer.Option("--session", help="Existing blackbox session id.")] = None,
+    kind: Annotated[str, typer.Option("--kind", help="Event kind for this note.")] = "note",
+    json_output: Annotated[bool, typer.Option("--json", help="Print machine-readable JSON.")] = False,
+) -> None:
+    payload = record_note(path.resolve(), note, session_id=session_id, kind=kind)
+    typer.echo(json.dumps(payload, indent=2) if json_output else f"Recorded {kind} in session #{payload['session_id']}")
+
+
+@app.command("blackbox-report")
+def blackbox_report_command(
+    session_id: Annotated[int, typer.Argument(help="Session id to report.")],
+    path: Annotated[Path, typer.Argument(help="Repository path.")] = Path("."),
+    output: Annotated[Path | None, typer.Option("--output", help="Optional markdown output path.")] = None,
+) -> None:
+    report = blackbox_report(path.resolve(), session_id)
+    if output:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(report, encoding="utf-8")
+        typer.echo(f"Wrote {output}")
+        return
+    typer.echo(report)
 
 
 @app.command()

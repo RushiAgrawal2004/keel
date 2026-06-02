@@ -1,50 +1,56 @@
 # Keel
 
-Keel is a memory engine for coding agents.
+Keel is a blackbox recorder for coding agents.
 
-It gives Codex, Claude, and other MCP-compatible agents durable project memory, architecture context, session replay, and architecture regression checks powered by Graphify.
+It gives Codex, Claude, and other MCP-compatible agents three focused capabilities:
+
+- a Graphify project graph
+- a command/session blackbox recorder
+- an MCP server for agent access
 
 ## Quickstart
 
 ```bash
 pip install keel-arch
 keel init .
-keel discover . --write
-keel proposals .
-keel approve ui_never_touches_database .
-keel check .
+keel sync .
+keel session-start . --label first-run
+keel run "python -m pytest" --repo . --session 1
+keel blackbox-note "Tests are the first verification gate." --repo . --session 1 --kind decision
+keel blackbox-report 1 .
 ```
 
-Keel reads `graphify-out/graph.json`, proposes deterministic architecture contracts from the graph, and enforces only contracts a human approved in `.keel.yml`.
+Keel reads and maintains `graphify-out/graph.json`, records command output and repo state into `keel-out/keel.db`, and exposes the same operations through MCP.
 
 For the internal design, see [ARCHITECTURE.md](ARCHITECTURE.md), [MEMORY_ARCHITECTURE.md](MEMORY_ARCHITECTURE.md), and [KEEL_OPERATIONS_GUIDE.md](KEEL_OPERATIONS_GUIDE.md).
 
-## Agent Memory
+## Blackbox Recorder
 
 ```bash
-keel remember --from-project --repo .
-keel remember "Always update buildkeelupdates.md after Keel changes." --kind preference --tag agent
 keel sync .
-keel recall "how do I run tests?" --repo . --verify --plan
-keel context "debug the dashboard" --repo .
-keel manager-status . --json
-keel graph-status . --json
-keel agent-setup . --client claude-code --write
-keel memory-architecture . --write
-keel memories --repo .
-keel eval .
-keel hooks . --client codex --write
+keel session-start . --label claude
+keel run "npm test" --repo . --session 1
+keel run "npm run build" --repo . --session 1 --update-graph
+keel blackbox-note "Build passes only after generated files are refreshed." --repo . --session 1 --kind finding
+keel sessions .
+keel blackbox-report 1 .
+keel session-end 1 .
 ```
 
-Keel stores durable memory in `keel-out/keel.sqlite3`. Memories can be project summaries, architecture notes, user preferences, decisions, session facts, or any other context an agent should remember across runs.
-
-The memory engine includes a deterministic encoding gate, typed memory classification, SQLite FTS-backed retrieval when available, query planning, reranking signals, repo verification, context-pack rendering, lifecycle hook configs, and a built-in memory eval suite.
-
-`keel context` is safety-oriented: it labels coverage, includes verification status, and tells agents to inspect files directly when memory is weak or missing.
+Every recorded command stores exit code, duration, stdout/stderr tails, output hashes, git status, changed files, diff stats, and Graphify graph status before/after the command.
 
 ## Commands
 
 ```bash
+keel session-start . --label codex
+keel run "python -m pytest" --repo . --session 1
+keel blackbox-note "Important decision." --repo . --session 1 --kind decision
+keel sessions .
+keel blackbox-report 1 .
+keel session-end 1 .
+keel sync .
+keel graph-status .
+keel build .
 keel discover . --json
 keel proposals .
 keel approve ui_never_touches_database .
@@ -104,17 +110,16 @@ keel serve
 
 `keel build` writes a layered graph snapshot to `keel-out/keel-graph.json`. `keel brief` prints a short markdown briefing for coding agents. `keel serve` starts a stdio MCP server exposing:
 
-- `get_brief`
-- `check_change`
-- `record_action`
-- `get_replay`
-- `memory_search`
-- `memory_write`
-- `memory_bootstrap`
-- `memory_context`
-- `project_sync`
-- `project_status`
-- `graph_status`
+- `mcp_project_sync`
+- `mcp_project_status`
+- `mcp_graph_status`
+- `mcp_blackbox_start`
+- `mcp_blackbox_run`
+- `mcp_blackbox_note`
+- `mcp_blackbox_sessions`
+- `mcp_blackbox_report`
+- `mcp_blackbox_end`
+- `mcp_check_change`
 
 Set `KEEL_REPO_PATH` or pass `--repo` to point the server at a target repo.
 
@@ -127,10 +132,10 @@ keel serve --repo .
 
 This writes MCP setup and Keel manager instructions under `keel-out/agent-setup/`. The intended lifecycle is:
 
-- session start: `keel sync .`
-- before task: `keel context "<task>"`
-- after task: `keel remember "<summary>" --kind session --tag agent --gate`
-- finish: run tests, `keel check .`, and `keel eval .`
+- session start: `keel session-start . --label claude-code` and `keel sync .`
+- during work: `keel run "<command>" --repo . --session <id>`
+- decisions: `keel blackbox-note "<decision>" --repo . --session <id> --kind decision`
+- finish: `keel blackbox-report <id> .` and `keel session-end <id> .`
 
 Use `keel manager-status .` and `keel graph-status .` to check whether memory, sync events, and Graphify outputs are healthy.
 

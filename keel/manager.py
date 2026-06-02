@@ -61,9 +61,13 @@ def _status_warnings(memories: list[dict[str, Any]], latest_sync: dict[str, Any]
 
 def manager_instructions(repo_path: Path, client: str = "claude-code") -> str:
     repo = str(repo_path.resolve())
-    return f"""# Keel Project Manager
+    return f"""# Keel Blackbox Manager
 
-Use Keel as the project manager for this repository.
+Use Keel for three things only:
+
+1. Graphify graph access.
+2. Blackbox recording of commands, failures, changes, and decisions.
+3. MCP tools for agent access.
 
 Repository:
 `{repo}`
@@ -73,44 +77,46 @@ Repository:
 At session start:
 
 ```bash
+keel session-start "{repo}" --label "{client}"
 keel sync "{repo}"
 ```
 
-Before each coding task:
+During work, run shell commands through Keel so they are recorded:
 
 ```bash
-keel context "<task>" --repo "{repo}" --limit 8
+keel run "<command>" --repo "{repo}" --session <SESSION_ID>
 ```
 
-After each coding task:
+When making a decision or learning a project fact:
 
 ```bash
-keel remember "<short summary of what changed, what was learned, and what to avoid next time>" --repo "{repo}" --kind session --tag agent --gate
+keel blackbox-note "<decision or finding>" --repo "{repo}" --session <SESSION_ID> --kind decision
 ```
 
 Before finishing:
 
 ```bash
-keel check "{repo}"
-keel eval "{repo}"
+keel run "python -m pytest" --repo "{repo}" --session <SESSION_ID>
+keel blackbox-report <SESSION_ID> "{repo}"
+keel session-end <SESSION_ID> "{repo}"
 ```
 
 ## MCP Tools
 
 Prefer MCP tools when available:
 
-- `mcp_memory_bootstrap`
-- `mcp_memory_context`
-- `mcp_memory_search`
-- `mcp_memory_write`
 - `mcp_project_sync`
 - `mcp_project_status`
 - `mcp_graph_status`
+- `mcp_blackbox_start`
+- `mcp_blackbox_run`
+- `mcp_blackbox_note`
+- `mcp_blackbox_sessions`
+- `mcp_blackbox_report`
+- `mcp_blackbox_end`
 - `mcp_check_change`
-- `mcp_record_action`
-- `mcp_get_replay`
 
 ## Safety Rule
 
-Memory guides the agent. Current repo files, tests, and Keel checks are the source of truth. If memory is missing, stale, or low confidence, inspect files directly and then store the new finding.
+The blackbox is evidence. Current repo files, Graphify output, tests, and command results are source of truth. Record what happened; do not pretend Keel inferred facts it did not observe.
 """

@@ -18,7 +18,16 @@ from .memory import remember as remember_memory
 from .memory import remember_project_context
 from .graphify_runner import graph_status
 from .manager import manager_status, sync_project
-from .record import get_session, log_action, start_session
+from .record import (
+    blackbox_report,
+    end_session,
+    get_session,
+    list_sessions,
+    log_action,
+    record_note,
+    run_command,
+    start_session,
+)
 from .report import render_replay
 
 
@@ -44,6 +53,38 @@ def record_action(kind: str, payload: dict[str, Any], session_id: int | None = N
 
 def get_replay(session_id: int, repo_path: Path | None = None) -> str:
     return render_replay(get_session(_repo(repo_path), session_id))
+
+
+def blackbox_start(label: str | None = None, repo_path: Path | None = None) -> dict[str, Any]:
+    repo = _repo(repo_path)
+    session_id = start_session(repo, label=label)
+    return {"ok": True, "session_id": session_id, "repo": str(repo), "label": label}
+
+
+def blackbox_end(session_id: int, status: str = "completed", repo_path: Path | None = None) -> dict[str, Any]:
+    return {"ok": True, **end_session(_repo(repo_path), session_id, status=status)}
+
+
+def blackbox_run(
+    command: str,
+    session_id: int | None = None,
+    timeout: int = 600,
+    update_graph: bool = False,
+    repo_path: Path | None = None,
+) -> dict[str, Any]:
+    return run_command(_repo(repo_path), command, session_id=session_id, timeout=timeout, update_graph=update_graph)
+
+
+def blackbox_note(note: str, session_id: int | None = None, kind: str = "note", repo_path: Path | None = None) -> dict[str, Any]:
+    return record_note(_repo(repo_path), note, session_id=session_id, kind=kind)
+
+
+def blackbox_sessions(limit: int = 20, repo_path: Path | None = None) -> list[dict[str, Any]]:
+    return list_sessions(_repo(repo_path), limit=limit)
+
+
+def blackbox_report_text(session_id: int, repo_path: Path | None = None) -> str:
+    return blackbox_report(_repo(repo_path), session_id)
 
 
 def memory_search(query: str, limit: int = 5, repo_path: Path | None = None) -> list[dict[str, Any]]:
@@ -106,6 +147,33 @@ def main(argv: list[str] | None = None) -> None:
     @server.tool()
     def mcp_get_replay(session_id: int) -> str:
         return get_replay(session_id, repo)
+
+    @server.tool()
+    def mcp_blackbox_start(label: str | None = None) -> str:
+        return json.dumps(blackbox_start(label=label, repo_path=repo), indent=2)
+
+    @server.tool()
+    def mcp_blackbox_run(command: str, session_id: int | None = None, timeout: int = 600, update_graph: bool = False) -> str:
+        return json.dumps(
+            blackbox_run(command, session_id=session_id, timeout=timeout, update_graph=update_graph, repo_path=repo),
+            indent=2,
+        )
+
+    @server.tool()
+    def mcp_blackbox_note(note: str, session_id: int | None = None, kind: str = "note") -> str:
+        return json.dumps(blackbox_note(note, session_id=session_id, kind=kind, repo_path=repo), indent=2)
+
+    @server.tool()
+    def mcp_blackbox_sessions(limit: int = 20) -> str:
+        return json.dumps(blackbox_sessions(limit=limit, repo_path=repo), indent=2)
+
+    @server.tool()
+    def mcp_blackbox_report(session_id: int) -> str:
+        return blackbox_report_text(session_id, repo)
+
+    @server.tool()
+    def mcp_blackbox_end(session_id: int, status: str = "completed") -> str:
+        return json.dumps(blackbox_end(session_id, status=status, repo_path=repo), indent=2)
 
     @server.tool()
     def mcp_memory_search(query: str, limit: int = 5) -> str:

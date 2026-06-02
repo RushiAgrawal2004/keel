@@ -377,3 +377,48 @@
 - `python -m pytest` passed with 34 tests.
 - `python -m build` created the `keel_arch-0.1.0` sdist and wheel.
 - Refreshed Graphify after `.env` bootstrap changes: `574 nodes`, `1892 edges`, `33 communities`.
+
+## 2026-06-02 - Blackbox-First Keel
+
+### Request
+- Stop expanding random features and focus Keel on only:
+  - Graphify graph
+  - killer blackbox recorder
+  - MCP
+
+### Changes
+- Upgraded `keel/record.py` from basic event logging to a blackbox recorder:
+  - labeled sessions
+  - session end/status
+  - session listing
+  - command execution through `keel run`
+  - stdout/stderr tail capture
+  - output hashes and truncation metadata
+  - command duration and exit code
+  - timeout handling
+  - git head/branch/status/diff stat snapshots
+  - changed-file extraction
+  - Graphify graph status snapshots
+  - blackbox markdown report generation
+- Added CLI commands:
+  - `keel session-start`
+  - `keel session-end`
+  - `keel sessions`
+  - `keel run`
+  - `keel blackbox-note`
+  - `keel blackbox-report`
+- Added MCP helpers/tools:
+  - `mcp_blackbox_start`
+  - `mcp_blackbox_run`
+  - `mcp_blackbox_note`
+  - `mcp_blackbox_sessions`
+  - `mcp_blackbox_report`
+  - `mcp_blackbox_end`
+- Updated generated hooks and agent setup to use the blackbox-first lifecycle.
+- Updated README positioning from broad memory engine to Graphify + blackbox + MCP.
+- Added tests for blackbox command capture, CLI flow, and MCP helper flow.
+
+### Verification
+- `python -m pytest` passed with 37 tests.
+- `python -m build` created the `keel_arch-0.1.0` sdist and wheel.
+- Refreshed Graphify after blackbox-first changes: `603 nodes`, `2086 edges`, `34 communities`.
